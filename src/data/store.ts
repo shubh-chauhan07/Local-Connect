@@ -340,9 +340,33 @@ async function handleAuthSession(sbUser: import('@supabase/supabase-js').User) {
   const userMeta = sbUser.user_metadata ?? {};
   const isAdmin = appMeta.role === 'admin';
 
+  let userRow: Record<string, unknown> | null = null;
   const { data: accountRows, error: accountError } = await supabase.rpc('get_my_account');
-  if (accountError) throw new Error(`Could not load your LocalConnect account: ${accountError.message}`);
-  const userRow = (accountRows?.[0] ?? null) as Record<string, unknown> | null;
+  if (!accountError && accountRows && accountRows.length > 0) {
+    userRow = (accountRows[0] ?? null) as Record<string, unknown> | null;
+  } else {
+    // Fallback if get_my_account RPC migration has not been applied to the live database yet
+    const { data: directUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('auth_id', sbUser.id)
+      .maybeSingle();
+
+    if (directUser) {
+      const { data: wpRow } = await supabase.from('worker_profiles').select('id').eq('userId', directUser.id).maybeSingle();
+      const { data: epRow } = await supabase.from('employer_profiles').select('id').eq('userId', directUser.id).maybeSingle();
+      userRow = {
+        user_id: directUser.id,
+        account_role: directUser.role,
+        name: directUser.name,
+        email: directUser.email,
+        user_phone: directUser.phone,
+        verification: directUser.verification,
+        worker_profile_id: wpRow?.id ?? null,
+        employer_profile_id: epRow?.id ?? null,
+      };
+    }
+  }
 
   if (!userRow) {
     // Need to create the users + profile rows (after email confirmation)
