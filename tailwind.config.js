@@ -1,0 +1,106 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // Warm off-white background
+        canvas: {
+          50: '#fbfaf7',
+          100: '#f6f4ee',
+          200: '#eeeae0',
+        },
+        // Deep navy text
+        ink: {
+          900: '#0f1f33',
+          800: '#15263d',
+          700: '#1f3550',
+          600: '#33506e',
+          500: '#4a6886',
+          400: '#6f8aa6',
+          300: '#9badc2',
+        },
+        // Emerald/teal primary
+        brand: {
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
+        },
+        teal: {
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+        },
+        // Subtle blue accents
+        accent: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+        },
+        success: {
+          50: '#ecfdf5',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+        },
+        warning: {
+          50: '#fffbeb',
+          100: '#fef3c7',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+        },
+        error: {
+          50: '#fef2f2',
+          100: '#fee2e2',
+          500: '#ef4444',
+          600: '#dc2626',
+          700: '#b91c1c',
+        },
+      },
+      fontFamily: {
+        sans: ['"Inter"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', '"Inter"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(15,31,51,0.04), 0 4px 12px rgba(15,31,51,0.06)',
+        cardHover: '0 2px 4px rgba(15,31,51,0.06), 0 12px 28px rgba(15,31,51,0.10)',
+        pop: '0 8px 30px rgba(15,31,51,0.18)',
+      },
+      borderRadius: {
+        xl: '0.875rem',
+        '2xl': '1.25rem',
+      },
+      keyframes: {
+        fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
+        slideUp: { from: { opacity: '0', transform: 'translateY(8px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+        scaleIn: { from: { opacity: '0', transform: 'scale(0.97)' }, to: { opacity: '1', transform: 'scale(1)' } },
+      },
+      animation: {
+        fadeIn: 'fadeIn 0.2s ease-out',
+        slideUp: 'slideUp 0.25s ease-out',
+        scaleIn: 'scaleIn 0.18s ease-out',
+      },
+    },
+  },
+  plugins: [],
+};

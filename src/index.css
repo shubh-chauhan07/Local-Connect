@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas-50 text-ink-900 font-sans antialiased;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight text-ink-900;
+    line-height: 1.2;
+    overflow-wrap: break-word;
+  }
+  p {
+    overflow-wrap: break-word;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-ink-300 rounded-full; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid theme('colors.brand.500');
+  outline-offset: 2px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline-offset: 2px;
+}
