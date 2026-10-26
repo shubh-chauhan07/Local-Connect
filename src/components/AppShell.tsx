@@ -7,6 +7,7 @@ import { useRouter, linkProps } from '@/lib/router';
 import { useDB, useSession, getUser, getUnreadCount, signOut } from '@/data/store';
 import { Logo, Avatar } from '@/components/shared';
 import { Badge } from '@/components/ui/Badge';
+import { toastError } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/types';
 
@@ -61,8 +62,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mobileNav = role === 'worker' ? workerMobileNav : role === 'employer' ? employerMobileNav : adminNav;
 
   const logout = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not log out.');
+    }
   };
 
   const notificationsPath = role === 'worker' ? '/worker/notifications' : role === 'employer' ? '/employer/notifications' : '/admin';
@@ -224,5 +229,4 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
 

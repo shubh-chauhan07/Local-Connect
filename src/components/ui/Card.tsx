@@ -1,7 +1,7 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Card({ className, children, ...rest }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
+export function Card({ className, children, ...rest }: { className?: string; children: ReactNode } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn('rounded-2xl bg-white border border-canvas-200 shadow-card', className)}

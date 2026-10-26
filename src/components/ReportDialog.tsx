@@ -23,7 +23,7 @@ const USER_REASONS = [
   'Other',
 ];
 
-export function useReportDialog(reporterUserId: string) {
+export function useReportDialog(reporterUserId: string | null) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<{ type: 'job' | 'user'; id: string; label: string } | null>(null);
   const [reason, setReason] = useState('');
@@ -31,6 +31,7 @@ export function useReportDialog(reporterUserId: string) {
   const [error, setError] = useState<string | null>(null);
 
   const openFor = (type: 'job' | 'user', id: string, label: string) => {
+    if (!reporterUserId) return;
     setTarget({ type, id, label });
     setReason('');
     setDetails('');
@@ -41,7 +42,7 @@ export function useReportDialog(reporterUserId: string) {
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
-    if (!target) return;
+    if (!target || !reporterUserId) return;
     if (!reason) {
       setError('Please choose a reason.');
       return;
@@ -78,7 +79,7 @@ export function useReportDialog(reporterUserId: string) {
           <Button variant="ghost" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={submit} disabled={submitting}>
+          <Button variant="danger" onClick={submit} disabled={submitting} loading={submitting}>
             Submit report
           </Button>
         </>

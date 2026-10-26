@@ -25,14 +25,17 @@ export function LandingPage() {
 
   const featured = db.jobs.filter((j) => j.status === 'published').slice(0, 6);
 
-  const enterWorker = () => navigate('/login');
+  const enterWorker = () => navigate('/jobs');
   const enterEmployer = () => navigate('/signup');
 
-  const search = () => {
+  const search = (overrides: { query?: string; area?: string } = {}) => {
     const params = new URLSearchParams();
-    if (query) params.set('q', query);
-    if (area) params.set('area', area);
-    navigate(`/login?next=${encodeURIComponent(`/worker/jobs?${params.toString()}`)}`);
+    const nextQuery = overrides.query ?? query;
+    const nextArea = overrides.area ?? area;
+    if (nextQuery) params.set('q', nextQuery);
+    if (nextArea) params.set('area', nextArea);
+    const queryString = params.toString();
+    navigate(`/jobs${queryString ? `?${queryString}` : ''}`);
   };
 
   return (
@@ -60,7 +63,7 @@ export function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-brand-50/60 to-canvas-50" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-20">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <Badge variant="brand" className="mb-4">
                 <MapPin className="h-3 w-3" /> Ahmedabad · Local work marketplace
@@ -97,7 +100,7 @@ export function LandingPage() {
                       aria-label="Area"
                     />
                   </div>
-                  <Button onClick={search} leftIcon={<Search className="h-4 w-4" />}>
+                  <Button onClick={() => search()} leftIcon={<Search className="h-4 w-4" />}>
                     Search
                   </Button>
                 </div>
@@ -110,7 +113,7 @@ export function LandingPage() {
                     key={t}
                     onClick={() => {
                       setQuery(t);
-                      search();
+                      search({ query: t });
                     }}
                     className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-700 ring-1 ring-inset ring-ink-200 hover:ring-brand-300 hover:text-brand-700 transition-colors"
                   >
@@ -174,7 +177,7 @@ export function LandingPage() {
               return (
                 <button
                   key={cat}
-                  onClick={enterWorker}
+                  onClick={() => navigate(`/jobs?category=${cat}`)}
                   className="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-canvas-100 transition-colors"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
@@ -191,20 +194,32 @@ export function LandingPage() {
 
       {/* Featured jobs */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-        <div className="flex items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="min-w-0">
             <h2 className="text-2xl sm:text-3xl font-extrabold font-display text-ink-900">Featured local jobs</h2>
-            <p className="mt-1.5 text-ink-500">Realistic openings across Ahmedabad, with transparent pay and hours.</p>
+            <p className="mt-1.5 text-sm sm:text-base text-ink-500">Realistic openings across Ahmedabad, with transparent pay and hours.</p>
           </div>
-          <Button variant="outline" onClick={enterWorker} rightIcon={<ArrowRight className="h-4 w-4" />}>
+          <Button variant="outline" onClick={enterWorker} rightIcon={<ArrowRight className="h-4 w-4" />} className="self-start sm:self-auto shrink-0">
             View all
           </Button>
         </div>
-        <div className="mt-7 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {featured.map((job) => {
             const employer = db.employerProfiles.find((e) => e.id === job.employerId);
             return (
-              <Card key={job.id} className="p-5 flex flex-col hover:shadow-cardHover transition-shadow">
+              <Card
+                key={job.id}
+                className="p-5 flex flex-col hover:shadow-cardHover transition-shadow cursor-pointer"
+                onClick={() => navigate(`/jobs/${job.id}`)}
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/jobs/${job.id}`);
+                  }
+                }}
+              >
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                     <CategoryIcon category={job.category} className="h-5 w-5" />
@@ -238,7 +253,7 @@ export function LandingPage() {
             <h2 className="text-2xl sm:text-3xl font-extrabold font-display text-ink-900">How LocalConnect works</h2>
             <p className="mt-2 text-ink-500">Simple steps for both workers and employers. No middlemen, no hidden fees.</p>
           </div>
-          <div className="mt-10 grid md:grid-cols-3 gap-6">
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { icon: <Search className="h-6 w-6" />, t: 'Search nearby jobs', d: 'Filter by area, category, date, shift and pay. See exactly what you will earn.' },
               { icon: <Briefcase className="h-6 w-6" />, t: 'Apply in one tap', d: 'Send a quick application with an optional note. Track status from Applied to Accepted.' },
@@ -258,7 +273,7 @@ export function LandingPage() {
 
       {/* Trust & safety */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           <div>
             <Badge variant="brand" className="mb-4"><ShieldCheck className="h-3 w-3" /> Trust & safety</Badge>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-display text-ink-900">Transparent, verified, and respectful of your time.</h2>
@@ -304,7 +319,7 @@ export function LandingPage() {
       {/* CTA */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-16">
         <Card className="overflow-hidden">
-          <div className="grid md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="p-8 sm:p-10">
               <h3 className="text-2xl font-extrabold font-display text-ink-900">I want to find work</h3>
               <p className="mt-2 text-ink-600">Browse nearby one-day, weekend, and part-time jobs. Apply in seconds, track your applications, and get paid for your time.</p>

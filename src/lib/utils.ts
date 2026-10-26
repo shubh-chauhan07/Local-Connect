@@ -26,8 +26,9 @@ export function formatRelative(iso: string): string {
 }
 
 export function timeTo12h(time: string): string {
+  if (!time || !time.includes(':')) return time;
   const [h, m] = time.split(':').map(Number);
-  if (isNaN(h)) return time;
+  if (isNaN(h) || isNaN(m)) return time;
   const period = h >= 12 ? 'PM' : 'AM';
   const hr = h % 12 === 0 ? 12 : h % 12;
   return `${hr}:${m.toString().padStart(2, '0')} ${period}`;

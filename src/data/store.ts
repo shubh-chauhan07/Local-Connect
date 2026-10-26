@@ -41,6 +41,7 @@ interface AuthState {
   emailConfirmed: boolean;
   loading: boolean;
   needsProfile: boolean; // just confirmed email, needs users row created
+  error: string | null;
 }
 
 let authState: AuthState = {
@@ -49,6 +50,7 @@ let authState: AuthState = {
   emailConfirmed: false,
   loading: true,
   needsProfile: false,
+  error: null,
 };
 const authListeners = new Set<() => void>();
 
@@ -62,7 +64,14 @@ function subscribeAuth(l: () => void) {
 }
 function getAuthSnapshot() { return authState; }
 function getAuthServerSnapshot(): AuthState {
-  return { session: { userId: null, role: 'worker' }, supabaseUser: null, emailConfirmed: false, loading: true, needsProfile: false };
+  return {
+    session: { userId: null, role: 'worker' },
+    supabaseUser: null,
+    emailConfirmed: false,
+    loading: true,
+    needsProfile: false,
+    error: null,
+  };
 }
 
 // ---------- Database cache ----------
@@ -95,10 +104,9 @@ async function loadDatabase(): Promise<void> {
   dbLoading = true;
   dbError = null;
   try {
-    const [usersR, empR, wpR, jobsR, appsR, savedR, notifR, reviewsR, reportsR] = await Promise.all([
-      supabase.from('users').select('*'),
-      supabase.from('employer_profiles').select('*'),
-      supabase.from('worker_profiles').select('*'),
+    const [usersR, empR, jobsR, appsR, savedR, notifR, reviewsR, reportsR] = await Promise.all([
+      supabase.from('users').select('id,role,name,verification,createdAt,avatarColor'),
+      supabase.from('employer_profiles').select('id,userId,businessName,category,address,area,city,description,verification,rating,ratingCount,jobsPosted,establishedYear'),
       supabase.from('jobs').select('*'),
       supabase.from('applications').select('*'),
       supabase.from('saved_jobs').select('*'),
@@ -106,6 +114,24 @@ async function loadDatabase(): Promise<void> {
       supabase.from('reviews').select('*'),
       supabase.from('reports').select('*'),
     ]);
+    const wpR = authState.session.userId
+      ? await supabase.from('worker_profiles').select('id,userId,fullName,preferredArea,areas,skills,availability,experienceYears,bio,rating,ratingCount,completedJobs,profileCompletion,workHistory')
+      : { data: [], error: null };
+
+    const failedQuery = [
+      { table: 'users', error: usersR.error },
+      { table: 'employer profiles', error: empR.error },
+      { table: 'worker profiles', error: wpR.error },
+      { table: 'jobs', error: jobsR.error },
+      { table: 'applications', error: appsR.error },
+      { table: 'saved jobs', error: savedR.error },
+      { table: 'notifications', error: notifR.error },
+      { table: 'reviews', error: reviewsR.error },
+      { table: 'reports', error: reportsR.error },
+    ].find((result) => result.error);
+    if (failedQuery) {
+      throw new Error(`Could not load ${failedQuery.table}: ${failedQuery.error?.message ?? 'Unknown database error'}`);
+    }
 
     const users = (usersR.data ?? []) as unknown as User[];
     const employerProfiles = (empR.data ?? []) as unknown as EmployerProfile[];
@@ -133,10 +159,52 @@ async function loadDatabase(): Promise<void> {
         return o;
       });
 
+    let ownAccount: Record<string, unknown> | undefined;
+    if (authState.session.userId) {
+      const { data, error } = await supabase.rpc('get_my_account');
+      if (!error && data && data.length > 0) {
+        ownAccount = (data[0] ?? undefined) as Record<string, unknown> | undefined;
+      } else {
+        // Fallback if get_my_account RPC migration has not been applied yet
+        const { data: userRow } = await supabase.from('users').select('*').eq('id', authState.session.userId).maybeSingle();
+        const { data: wpRow } = await supabase.from('worker_profiles').select('*').eq('userId', authState.session.userId).maybeSingle();
+        const { data: epRow } = await supabase.from('employer_profiles').select('*').eq('userId', authState.session.userId).maybeSingle();
+        if (userRow) {
+          ownAccount = {
+            user_id: userRow.id,
+            account_role: userRow.role,
+            name: userRow.name,
+            email: userRow.email,
+            user_phone: userRow.phone,
+            verification: userRow.verification,
+            created_at: userRow.createdAt,
+            avatar_color: userRow.avatarColor,
+            worker_profile_id: wpRow?.id,
+            worker_phone: wpRow?.phone,
+            employer_profile_id: epRow?.id,
+            employer_phone: epRow?.phone,
+          };
+        }
+      }
+    }
+
+    const ownUserId = ownAccount?.user_id;
+    const ownWorkerProfileId = ownAccount?.worker_profile_id;
+    const ownEmployerProfileId = ownAccount?.employer_profile_id;
     const db: Database = {
-      users: norm(users as unknown as Record<string, unknown>[]) as unknown as User[],
-      workerProfiles: norm(workerProfiles as unknown as Record<string, unknown>[]) as unknown as WorkerProfile[],
-      employerProfiles: norm(employerProfiles as unknown as Record<string, unknown>[]) as unknown as EmployerProfile[],
+      users: norm(users as unknown as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        email: row.id === ownUserId ? String(ownAccount?.email ?? '') : '',
+        phone: row.id === ownUserId ? String(ownAccount?.user_phone ?? '') : '',
+      })) as unknown as User[],
+      workerProfiles: norm(workerProfiles as unknown as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        phone: row.id === ownWorkerProfileId ? String(ownAccount?.worker_phone ?? '') : '',
+      })) as unknown as WorkerProfile[],
+      employerProfiles: norm(employerProfiles as unknown as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        phone: row.id === ownEmployerProfileId ? String(ownAccount?.employer_phone ?? '') : '',
+      })) as unknown as EmployerProfile[],
       jobs: norm(jobs as unknown as Record<string, unknown>[]) as unknown as Job[],
       applications: norm(applications as unknown as Record<string, unknown>[]) as unknown as Application[],
       savedJobs: norm(savedJobs as unknown as Record<string, unknown>[]) as unknown as SavedJob[],
@@ -149,14 +217,16 @@ async function loadDatabase(): Promise<void> {
     dbLoaded = true;
   } catch (e) {
     dbError = e instanceof Error ? e.message : 'Failed to load data from the database.';
+    throw new Error(dbError);
   } finally {
     dbLoading = false;
+    notifyDB();
   }
 }
 
 function subscribeDB(l: () => void) {
   dbListeners.add(l);
-  if (!dbLoaded && !dbLoading) loadDatabase();
+  if (!dbLoaded && !dbLoading) void loadDatabase().catch(() => undefined);
   return () => { dbListeners.delete(l); };
 }
 function getDBSnapshot() { return dbCache; }
@@ -202,14 +272,25 @@ export async function initAuth() {
   // Register onAuthStateChange BEFORE getSession() so we don't miss the
   // SIGNED_IN event that fires when Supabase exchanges the confirmation
   // token from the URL (detectSessionInUrl: true).
-  supabase.auth.onAuthStateChange(async (event, sbSession) => {
+  supabase.auth.onAuthStateChange((event, sbSession) => {
     if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
       if (sbSession?.user) {
-        await handleAuthSession(sbSession.user);
-        // Redirect to the user's dashboard after successful email confirmation or login
-        if (event === 'SIGNED_IN' && sbSession.user.email_confirmed_at) {
-          redirectAfterAuth(sbSession.user);
-        }
+        void Promise.resolve()
+          .then(() => handleAuthSession(sbSession.user))
+          .then(() => {
+            if (event === 'SIGNED_IN' && sbSession.user.email_confirmed_at) {
+              redirectAfterAuth(sbSession.user);
+            }
+          })
+          .catch((error: unknown) => {
+            authState = {
+              ...authState,
+              supabaseUser: sbSession.user,
+              loading: false,
+              error: error instanceof Error ? error.message : 'Could not load your account.',
+            };
+            notifyAuth();
+          });
       }
     } else if (event === 'SIGNED_OUT') {
       authState = {
@@ -218,9 +299,10 @@ export async function initAuth() {
         emailConfirmed: false,
         loading: false,
         needsProfile: false,
+        error: null,
       };
       notifyAuth();
-      loadDatabase();
+      void loadDatabase().catch(() => undefined);
     } else if (event === 'PASSWORD_RECOVERY') {
       // Handled by the reset page via useAuth
       if (sbSession?.user) {
@@ -228,6 +310,7 @@ export async function initAuth() {
           ...authState,
           supabaseUser: sbSession.user,
           loading: false,
+          error: null,
         };
         notifyAuth();
       }
@@ -235,11 +318,18 @@ export async function initAuth() {
   });
 
   // Restore session on load
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    await handleAuthSession(session.user);
-  } else {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (data.session) {
+      await handleAuthSession(data.session.user);
+    } else {
+      authState = { ...authState, loading: false, error: null };
+      notifyAuth();
+    }
+  } catch (error) {
     authState = { ...authState, loading: false };
+    authState.error = error instanceof Error ? error.message : 'Could not restore your session.';
     notifyAuth();
   }
 }
@@ -250,12 +340,9 @@ async function handleAuthSession(sbUser: import('@supabase/supabase-js').User) {
   const userMeta = sbUser.user_metadata ?? {};
   const isAdmin = appMeta.role === 'admin';
 
-  // Look up the application users row for this auth user
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('*')
-    .eq('auth_id', sbUser.id)
-    .maybeSingle();
+  const { data: accountRows, error: accountError } = await supabase.rpc('get_my_account');
+  if (accountError) throw new Error(`Could not load your LocalConnect account: ${accountError.message}`);
+  const userRow = (accountRows?.[0] ?? null) as Record<string, unknown> | null;
 
   if (!userRow) {
     // Need to create the users + profile rows (after email confirmation)
@@ -266,12 +353,12 @@ async function handleAuthSession(sbUser: import('@supabase/supabase-js').User) {
         emailConfirmed: false,
         loading: false,
         needsProfile: false,
+        error: null,
       };
       notifyAuth();
       return;
     }
-    // Create users row + profile
-    const role: Role = (userMeta.role as Role) || 'worker';
+    const role: Role = userMeta.role === 'employer' ? 'employer' : 'worker';
     const name = (userMeta.name as string) || sbUser.email?.split('@')[0] || 'User';
     const phone = (userMeta.phone as string) || '';
     const area = (userMeta.area as string) || '';
@@ -287,80 +374,107 @@ async function handleAuthSession(sbUser: import('@supabase/supabase-js').User) {
       avatarColor: avatarColor(name),
     };
     const { error: userErr } = await supabase.from('users').insert({ ...newUser, auth_id: sbUser.id });
-    if (userErr) {
-      authState = { ...authState, loading: false };
-      notifyAuth();
-      return;
-    }
-    if (role === 'employer') {
-      const businessName = (userMeta.businessName as string) || name;
-      const ep: EmployerProfile = {
-        id: newId('ep'),
-        userId,
-        businessName,
-        category: 'retail',
-        address: area,
-        area: area.split(',')[0].trim() || 'Ahmedabad',
-        city: 'Ahmedabad',
-        phone,
-        description: '',
-        verification: 'unverified',
-        rating: 0,
-        ratingCount: 0,
-        jobsPosted: 0,
-        establishedYear: new Date().getFullYear(),
-      };
-      await supabase.from('employer_profiles').insert(ep);
-    } else {
-      const wp: WorkerProfile = {
-        id: newId('wp'),
-        userId,
-        fullName: name,
-        phone,
-        preferredArea: area || 'Ahmedabad',
-        areas: area ? [area.split(',')[0].trim()] : [],
-        skills: [],
-        availability: [],
-        experienceYears: 0,
-        bio: '',
-        rating: 0,
-        ratingCount: 0,
-        completedJobs: 0,
-        profileCompletion: 30,
-        workHistory: [],
-      };
-      await supabase.from('worker_profiles').insert({ ...wp, workHistory: JSON.stringify(wp.workHistory) });
-    }
-    await loadDatabase();
+    if (userErr) throw new Error(`Could not create your LocalConnect account: ${userErr.message}`);
+    await createAccountProfile(userId, role, name, phone, area, (userMeta.businessName as string) || name);
     authState = {
       session: { userId, role: isAdmin ? 'admin' : role },
       supabaseUser: sbUser,
       emailConfirmed: true,
       loading: false,
       needsProfile: false,
+      error: null,
     };
     notifyAuth();
+    await loadDatabase();
     return;
   }
 
-  const appRole: Role = isAdmin ? 'admin' : (userRow.role as Role);
+  const appUserId = String(userRow.user_id);
+  const storedRole: Role = userRow.account_role === 'employer' ? 'employer' : 'worker';
+  const appRole: Role = isAdmin ? 'admin' : storedRole;
+  const name = String(userRow.name ?? sbUser.email?.split('@')[0] ?? 'User');
+  const phone = String(userRow.user_phone ?? '');
+  const area = String(userMeta.area ?? '');
+  if (storedRole === 'employer' && !userRow.employer_profile_id) {
+    await createAccountProfile(appUserId, storedRole, name, phone, area, (userMeta.businessName as string) || name);
+  } else if (storedRole === 'worker' && !userRow.worker_profile_id) {
+    await createAccountProfile(appUserId, storedRole, name, phone, area, name);
+  }
   authState = {
-    session: { userId: userRow.id, role: appRole },
+    session: { userId: appUserId, role: appRole },
     supabaseUser: sbUser,
     emailConfirmed,
     loading: false,
     needsProfile: false,
+    error: null,
   };
   notifyAuth();
-  loadDatabase();
+  await loadDatabase();
+}
+
+async function createAccountProfile(
+  userId: string,
+  role: Exclude<Role, 'admin'>,
+  name: string,
+  phone: string,
+  area: string,
+  businessName: string,
+) {
+  if (role === 'employer') {
+    const profile: EmployerProfile = {
+      id: newId('ep'),
+      userId,
+      businessName,
+      category: 'retail',
+      address: area,
+      area: area.split(',')[0].trim() || 'Ahmedabad',
+      city: 'Ahmedabad',
+      phone,
+      description: '',
+      verification: 'unverified',
+      rating: 0,
+      ratingCount: 0,
+      jobsPosted: 0,
+      establishedYear: new Date().getFullYear(),
+    };
+    const { error } = await supabase.from('employer_profiles').insert(profile);
+    if (error) throw new Error(`Could not create your employer profile: ${error.message}`);
+    return;
+  }
+
+  const profile: WorkerProfile = {
+    id: newId('wp'),
+    userId,
+    fullName: name,
+    phone,
+    preferredArea: area || 'Ahmedabad',
+    areas: area ? [area.split(',')[0].trim()] : [],
+    skills: [],
+    availability: [],
+    experienceYears: 0,
+    bio: '',
+    rating: 0,
+    ratingCount: 0,
+    completedJobs: 0,
+    profileCompletion: 30,
+    workHistory: [],
+  };
+  const { error } = await supabase.from('worker_profiles').insert({
+    ...profile,
+    workHistory: JSON.stringify(profile.workHistory),
+  });
+  if (error) throw new Error(`Could not create your worker profile: ${error.message}`);
 }
 
 function redirectAfterAuth(sbUser: import('@supabase/supabase-js').User) {
+  if (!['/', '/login', '/signup'].includes(window.location.pathname)) return;
   const meta = sbUser.app_metadata ?? {};
   const userMeta = sbUser.user_metadata ?? {};
   const isAdmin = meta.role === 'admin';
-  const role: Role = (userMeta.role as Role) || 'worker';
-  const target = isAdmin ? '/admin' : role === 'employer' ? '/employer' : '/worker';
+  const role = userMeta.role === 'employer' ? 'employer' : 'worker';
+  const next = new URLSearchParams(window.location.search).get('next');
+  const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : null;
+  const target = safeNext ?? (isAdmin ? '/admin' : role === 'employer' ? '/employer' : '/worker');
   const current = window.location.pathname + window.location.search;
   if (current !== target) {
     window.history.pushState({}, '', target);
@@ -410,6 +524,11 @@ export async function signIn(email: string, password: string): Promise<{ error: 
     if (error.message.toLowerCase().includes('email not confirmed')) {
       return { error: 'Please confirm your email before logging in. Check your inbox for the confirmation link.', needsConfirmation: true };
     }
+    if (error.message.includes('Database error querying schema') || error.status === 500) {
+      return {
+        error: 'Supabase Auth database scan error: this account in auth.users has NULL confirmation_token values. Run the migration SQL in Supabase SQL Editor to repair the tokens.',
+      };
+    }
     return { error: error.message };
   }
   if (data.user && !data.user.email_confirmed_at) {
@@ -425,7 +544,7 @@ export async function resendConfirmation(email: string): Promise<{ error: string
 }
 
 export async function requestPasswordReset(email: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: SITE_URL });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${SITE_URL}/reset-password` });
   if (error) return { error: error.message };
   return { error: null };
 }
@@ -437,11 +556,27 @@ export async function updatePassword(newPassword: string): Promise<{ error: stri
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) throw new Error(`Could not log out: ${error.message}`);
 }
 
 export function getPendingEmail(): string | null {
   return authState.supabaseUser?.email ?? null;
+}
+
+export async function getAuthorizedProfilePhone(userId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('get_authorized_profile_phone', { target_user_id: userId });
+  if (error) {
+    // Fallback if RPC has not been created on the live backend yet
+    const { data: ep } = await supabase.from('employer_profiles').select('phone').eq('userId', userId).maybeSingle();
+    if (ep?.phone) return ep.phone;
+    const { data: wp } = await supabase.from('worker_profiles').select('phone').eq('userId', userId).maybeSingle();
+    if (wp?.phone) return wp.phone;
+    const { data: u } = await supabase.from('users').select('phone').eq('id', userId).maybeSingle();
+    if (u?.phone) return u.phone;
+    return null;
+  }
+  return typeof data === 'string' ? data : null;
 }
 
 // ---------- Selectors (unchanged signatures) ----------
@@ -513,6 +648,10 @@ export function getReviewsForTarget(
 }
 
 // ---------- Mutations (async, write to Supabase, refresh cache) ----------
+function throwOnSupabaseError(error: { message: string } | null, action: string): void {
+  if (error) throw new Error(`${action}: ${error.message}`);
+}
+
 export async function refreshDB() {
   await loadDatabase();
 }
@@ -534,45 +673,36 @@ export async function createJob(
     verification: job.verification ?? employer?.verification ?? 'unverified',
   };
   const { error } = await supabase.from('jobs').insert(row);
-  if (error) throw error;
+  throwOnSupabaseError(error, 'Could not create job');
   await loadDatabase();
   return id;
 }
 
 export async function updateJob(jobId: string, patch: Partial<Job>): Promise<void> {
-  const { error } = await supabase.from('jobs').update(patch).eq('id', jobId);
-  if (error) throw error;
+  const editableFields = [
+    'title', 'category', 'description', 'responsibilities', 'requiredSkills',
+    'workersNeeded', 'location', 'area', 'city', 'date', 'startTime', 'endTime',
+    'employmentType', 'payAmount', 'payBasis', 'paymentTiming', 'paymentMethod',
+    'requirements', 'contactPreference', 'benefits', 'status',
+  ] as const satisfies readonly (keyof Job)[];
+  const update: Partial<Job> = {};
+  for (const key of editableFields) {
+    if (patch[key] !== undefined) Object.assign(update, { [key]: patch[key] });
+  }
+  const { error } = await supabase.from('jobs').update(update).eq('id', jobId);
+  throwOnSupabaseError(error, 'Could not update job');
   await loadDatabase();
 }
 
 export async function setJobStatus(jobId: string, status: JobStatus): Promise<void> {
   const { error } = await supabase.from('jobs').update({ status }).eq('id', jobId);
-  if (error) throw error;
-  // Notify accepted workers
-  if (status === 'completed' || status === 'paused') {
-    const job = dbCache.jobs.find((j) => j.id === jobId);
-    const accepted = dbCache.applications.filter((a) => a.jobId === jobId && a.status === 'accepted');
-    for (const a of accepted) {
-      await supabase.from('notifications').insert({
-        id: newId('n'),
-        userId: a.workerUserId,
-        type: 'job_status_changed',
-        title: status === 'completed' ? 'Job marked completed' : 'Job paused',
-        body: `The job "${job?.title ?? 'a job'}" was marked ${status} by the employer.`,
-        link: '/worker/applications',
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
-    }
-  }
+  throwOnSupabaseError(error, 'Could not update job status');
   await loadDatabase();
 }
 
 export async function deleteJob(jobId: string): Promise<void> {
-  await supabase.from('saved_jobs').delete().eq('jobId', jobId);
-  await supabase.from('applications').delete().eq('jobId', jobId);
   const { error } = await supabase.from('jobs').delete().eq('id', jobId);
-  if (error) throw error;
+  throwOnSupabaseError(error, 'Could not delete job');
   await loadDatabase();
 }
 
@@ -604,94 +734,60 @@ export async function applyToJob(
     if (error.code === '23505') return { ok: false, error: 'You have already applied to this job.' };
     return { ok: false, error: error.message };
   }
-  // Notify employer
-  await supabase.from('notifications').insert({
-    id: newId('n'),
-    userId: job.employerUserId,
-    type: 'application_received',
-    title: 'New application received',
-    body: `A worker applied to "${job.title}".`,
-    link: '/employer/applicants',
-    read: false,
-    createdAt: ts,
-  });
   await loadDatabase();
   return { ok: true };
 }
 
 export async function withdrawApplication(applicationId: string): Promise<void> {
   const app = dbCache.applications.find((a) => a.id === applicationId);
-  if (!app) return;
+  if (!app) throw new Error('Application not found.');
   const ts = new Date().toISOString();
   const { error } = await supabase.from('applications').update({ status: 'withdrawn', updatedAt: ts }).eq('id', applicationId);
-  if (error) throw error;
-  const job = dbCache.jobs.find((j) => j.id === app.jobId);
-  await supabase.from('notifications').insert({
-    id: newId('n'),
-    userId: app.employerUserId,
-    type: 'application_status',
-    title: 'Application withdrawn',
-    body: `A worker withdrew their application from "${job?.title ?? 'a job'}".`,
-    link: '/employer/applicants',
-    read: false,
-    createdAt: ts,
-  });
+  throwOnSupabaseError(error, 'Could not withdraw application');
   await loadDatabase();
 }
 
 export async function setApplicationStatus(applicationId: string, status: ApplicationStatus): Promise<void> {
   const app = dbCache.applications.find((a) => a.id === applicationId);
-  if (!app) return;
+  if (!app) throw new Error('Application not found.');
   const ts = new Date().toISOString();
   const { error } = await supabase.from('applications').update({ status, updatedAt: ts }).eq('id', applicationId);
-  if (error) throw error;
-  const job = dbCache.jobs.find((j) => j.id === app.jobId);
-  const labels: Record<ApplicationStatus, string> = {
-    applied: 'received', reviewed: 'reviewed', shortlisted: 'shortlisted',
-    accepted: 'accepted', rejected: 'rejected', withdrawn: 'withdrawn',
-  };
-  if (status !== 'reviewed') {
-    await supabase.from('notifications').insert({
-      id: newId('n'),
-      userId: app.workerUserId,
-      type: 'application_status',
-      title: `Application ${labels[status]}`,
-      body: `Your application for "${job?.title ?? 'your job application'}" was marked ${labels[status]} by the employer.`,
-      link: '/worker/applications',
-      read: false,
-      createdAt: ts,
-    });
-  }
+  throwOnSupabaseError(error, 'Could not update application status');
   await loadDatabase();
 }
 
 export async function toggleSaveJob(workerUserId: string, jobId: string): Promise<void> {
   const existing = dbCache.savedJobs.find((s) => s.workerUserId === workerUserId && s.jobId === jobId);
   if (existing) {
-    await supabase.from('saved_jobs').delete().eq('id', existing.id);
+    const { error } = await supabase.from('saved_jobs').delete().eq('id', existing.id);
+    throwOnSupabaseError(error, 'Could not remove saved job');
   } else {
-    await supabase.from('saved_jobs').insert({
+    const { error } = await supabase.from('saved_jobs').insert({
       id: newId('sav'),
       workerUserId,
       jobId,
       savedAt: new Date().toISOString(),
     });
+    throwOnSupabaseError(error, 'Could not save job');
   }
   await loadDatabase();
 }
 
 export async function removeSavedJob(savedId: string): Promise<void> {
-  await supabase.from('saved_jobs').delete().eq('id', savedId);
+  const { error } = await supabase.from('saved_jobs').delete().eq('id', savedId);
+  throwOnSupabaseError(error, 'Could not remove saved job');
   await loadDatabase();
 }
 
 export async function markNotificationRead(notificationId: string): Promise<void> {
-  await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+  throwOnSupabaseError(error, 'Could not mark notification as read');
   await loadDatabase();
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  await supabase.from('notifications').update({ read: true }).eq('userId', userId).eq('read', false);
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('userId', userId).eq('read', false);
+  throwOnSupabaseError(error, 'Could not mark notifications as read');
   await loadDatabase();
 }
 
@@ -703,7 +799,7 @@ export async function createReport(
   details: string,
 ): Promise<void> {
   const ts = new Date().toISOString();
-  await supabase.from('reports').insert({
+  const { error } = await supabase.from('reports').insert({
     id: newId('rep'),
     reporterUserId,
     targetType,
@@ -713,48 +809,32 @@ export async function createReport(
     status: 'open',
     createdAt: ts,
   });
-  await supabase.from('notifications').insert({
-    id: newId('n'),
-    userId: reporterUserId,
-    type: 'report_update',
-    title: 'Report submitted',
-    body: 'Your report has been received and will be reviewed by the moderation team.',
-    read: false,
-    createdAt: ts,
-  });
+  throwOnSupabaseError(error, 'Could not submit report');
   await loadDatabase();
 }
 
 export async function setReportStatus(reportId: string, status: Report['status']): Promise<void> {
-  const r = dbCache.reports.find((x) => x.id === reportId);
-  if (!r) return;
-  const ts = new Date().toISOString();
-  await supabase.from('reports').update({ status }).eq('id', reportId);
-  await supabase.from('notifications').insert({
-    id: newId('n'),
-    userId: r.reporterUserId,
-    type: 'report_update',
-    title: status === 'dismissed' ? 'Report dismissed' : status === 'suspended' ? 'Record suspended' : 'Report reviewed',
-    body: `Your report was reviewed by the moderation team and marked ${status}.`,
-    read: false,
-    createdAt: ts,
-  });
+  if (!dbCache.reports.some((report) => report.id === reportId)) throw new Error('Report not found.');
+  const { error } = await supabase.from('reports').update({ status }).eq('id', reportId);
+  throwOnSupabaseError(error, 'Could not update report status');
   await loadDatabase();
 }
 
 export async function updateWorkerProfile(userId: string, patch: Partial<WorkerProfile>): Promise<void> {
   const wp = dbCache.workerProfiles.find((w) => w.userId === userId);
-  if (!wp) return;
+  if (!wp) throw new Error('Worker profile not found.');
   const updateData: Record<string, unknown> = { ...patch };
   if (patch.workHistory) updateData.workHistory = JSON.stringify(patch.workHistory);
-  await supabase.from('worker_profiles').update(updateData).eq('id', wp.id);
+  const { error } = await supabase.from('worker_profiles').update(updateData).eq('id', wp.id);
+  throwOnSupabaseError(error, 'Could not update worker profile');
   await loadDatabase();
 }
 
 export async function updateEmployerProfile(userId: string, patch: Partial<EmployerProfile>): Promise<void> {
   const ep = dbCache.employerProfiles.find((e) => e.userId === userId);
-  if (!ep) return;
-  await supabase.from('employer_profiles').update(patch).eq('id', ep.id);
+  if (!ep) throw new Error('Employer profile not found.');
+  const { error } = await supabase.from('employer_profiles').update(patch).eq('id', ep.id);
+  throwOnSupabaseError(error, 'Could not update employer profile');
   await loadDatabase();
 }
 

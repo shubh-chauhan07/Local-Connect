@@ -17,7 +17,7 @@ export function EmployerManageJobsPage() {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const userId = session.userId!;
+  const userId = session.userId ?? '';
   const [filter, setFilter] = useState<JobStatus | 'all'>('all');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ type: string; jobId: string; title: string } | null>(null);

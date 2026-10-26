@@ -106,19 +106,21 @@ export function WorkerApplicationsPage() {
             if (!job) return null;
             const employer = db.employerProfiles.find((e) => e.id === job.employerId);
             return (
-              <Card key={app.id} className="p-4 flex items-center gap-4 hover:shadow-cardHover transition-shadow">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                  <CategoryIcon category={job.category} className="h-6 w-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-ink-900 truncate">{job.title}</p>
-                  <p className="text-xs text-ink-500 truncate">{employer?.businessName} · {job.area} · {formatDate(job.date)}</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <ApplicationStatusBadge status={app.status} />
-                    <span className="text-xs text-ink-400">Updated {formatRelative(app.updatedAt)}</span>
+              <Card key={app.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:shadow-cardHover transition-shadow">
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                    <CategoryIcon category={job.category} className="h-6 w-6" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-ink-900 truncate">{job.title}</p>
+                    <p className="text-xs text-ink-500 truncate">{employer?.businessName} · {job.area} · {formatDate(job.date)}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <ApplicationStatusBadge status={app.status} />
+                      <span className="text-xs text-ink-400">Updated {formatRelative(app.updatedAt)}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex shrink-0 items-center justify-end sm:flex-col sm:items-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-canvas-100">
                   <Button size="sm" variant="outline" onClick={() => setDetailApp(app.id)}>View</Button>
                   {canWithdraw(app.status) && (
                     <Button size="sm" variant="ghost" className="text-error-600 hover:bg-error-50" onClick={() => setWithdrawId(app.id)}>
@@ -161,7 +163,7 @@ export function WorkerApplicationsPage() {
                 <div className="mt-2"><ApplicationStatusBadge status={detail.status} /></div>
               </div>
             </div>
-            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400">Pay</p>
                 <p className="mt-0.5 font-bold text-brand-600">{formatINR(detailJob.payAmount)} {PAY_BASIS_LABELS[detailJob.payBasis]}</p>
@@ -177,21 +179,26 @@ export function WorkerApplicationsPage() {
                 <p className="mt-1 text-sm text-ink-700">{detail.message}</p>
               </div>
             )}
-            {detailEmployer && (
-              <div className="rounded-xl border border-canvas-200 p-4">
-                <div className="flex items-center gap-3">
-                  {employerUserFor(db, detailEmployer.userId) && (
-                    <Avatar name={employerUserFor(db, detailEmployer.userId)!.name} color={employerUserFor(db, detailEmployer.userId)!.avatarColor} size="md" />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-bold text-ink-900">{detailEmployer.businessName}</p>
-                    <VerificationBadge state={detailEmployer.verification} size="sm" />
+            {detailEmployer && (() => {
+              const empUser = employerUserFor(db, detailEmployer.userId);
+              return (
+                <div className="rounded-xl border border-canvas-200 p-4">
+                  <div className="flex items-center gap-3">
+                    {empUser && (
+                      <Avatar name={empUser.name} color={empUser.avatarColor} size="md" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-ink-900 truncate">{detailEmployer.businessName}</p>
+                      <VerificationBadge state={detailEmployer.verification} size="sm" />
+                    </div>
+                    {detailEmployer.ratingCount > 0 && <StarRating value={detailEmployer.rating} count={detailEmployer.ratingCount} />}
                   </div>
-                  {detailEmployer.ratingCount > 0 && <StarRating value={detailEmployer.rating} count={detailEmployer.ratingCount} />}
+                  {detailEmployer.description && (
+                    <p className="mt-2 text-sm text-ink-600">{detailEmployer.description}</p>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-ink-600">{detailEmployer.description}</p>
-              </div>
-            )}
+              );
+            })()}
             <Button variant="outline" fullWidth onClick={() => navigate(`/worker/jobs/${detailJob.id}`)}>
               View full job details
             </Button>

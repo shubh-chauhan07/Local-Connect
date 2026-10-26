@@ -11,9 +11,22 @@ export function WorkerDashboard() {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const workerUserId = session.userId!;
-  const user = db.users.find((u) => u.id === workerUserId)!;
-  const profile = db.workerProfiles.find((w) => w.userId === workerUserId)!;
+  const workerUserId = session.userId ?? '';
+  const user = db.users.find((u) => u.id === workerUserId);
+  const profile = db.workerProfiles.find((w) => w.userId === workerUserId);
+
+  if (!user || !profile) {
+    return (
+      <Card className="p-8 text-center max-w-lg mx-auto">
+        <h2 className="text-lg font-bold text-ink-900">Setting up your profile...</h2>
+        <p className="mt-2 text-sm text-ink-500">Your worker profile is being loaded or initialized.</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button variant="outline" onClick={() => navigate('/worker/jobs')}>Find Jobs</Button>
+          <Button onClick={() => navigate('/worker/profile')}>View Profile</Button>
+        </div>
+      </Card>
+    );
+  }
 
   const myApps = getApplicationsForWorker(db, workerUserId);
   const saved = getSavedJobsForWorker(db, workerUserId);
@@ -74,7 +87,7 @@ export function WorkerDashboard() {
       {upcoming.length > 0 && (
         <div>
           <SectionTitle title="Upcoming work" subtitle="Accepted jobs coming up soon" />
-          <div className="mt-3 grid sm:grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {upcoming.map((job) => {
               const employer = db.employerProfiles.find((e) => e.id === job!.employerId);
               return (
@@ -103,7 +116,7 @@ export function WorkerDashboard() {
           subtitle="Based on your skills and preferred areas"
           action={<Button variant="ghost" size="sm" onClick={() => navigate('/worker/jobs')} rightIcon={<ArrowRight className="h-4 w-4" />}>See all</Button>}
         />
-        <div className="mt-3 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {recommendedFinal.map((job) => (
             <JobCard
               key={job!.id}
@@ -127,7 +140,7 @@ export function WorkerDashboard() {
         {nearby.length === 0 ? (
           <Card><EmptyState icon={<Briefcase className="h-7 w-7" />} title="No jobs in your preferred areas right now" description="Try expanding your preferred areas in your profile." /></Card>
         ) : (
-          <div className="mt-3 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {nearby.map((job) => (
               <JobCard
                 key={job.id}

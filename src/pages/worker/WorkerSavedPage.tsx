@@ -4,14 +4,23 @@ import { useRouter } from '@/lib/router';
 import { JobCard } from '@/components/JobCard';
 import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { toastSuccess } from '@/components/ui/Toast';
+import { toastError, toastSuccess } from '@/components/ui/Toast';
 
 export function WorkerSavedPage() {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const workerUserId = session.userId!;
-  const saved = getSavedJobsForWorker(db, workerUserId);
+  const workerUserId = session.userId ?? '';
+  const saved = workerUserId ? getSavedJobsForWorker(db, workerUserId) : [];
+
+  const remove = async (savedId: string) => {
+    try {
+      await removeSavedJob(savedId);
+      toastSuccess('Removed from saved');
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not remove saved job.');
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -27,7 +36,7 @@ export function WorkerSavedPage() {
           />
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {saved.map((s) => {
             const job = db.jobs.find((j) => j.id === s.jobId);
             if (!job) return null;
@@ -37,7 +46,7 @@ export function WorkerSavedPage() {
                   job={job}
                   db={db}
                   saved
-                  onToggleSave={() => { void removeSavedJob(s.id); toastSuccess('Removed from saved'); }}
+                  onToggleSave={() => { void remove(s.id); }}
                   onOpen={() => navigate(`/worker/jobs/${job.id}`)}
                 />
               </div>

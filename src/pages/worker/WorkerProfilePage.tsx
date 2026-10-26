@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Phone, MapPin, Briefcase, Plus, X } from 'lucide-react';
 import { useDB, useSession, updateWorkerProfile } from '@/data/store';
 import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
@@ -16,21 +16,34 @@ const AVAILABILITY = ['Weekday mornings', 'Weekday afternoons', 'Evenings', 'Wee
 export function WorkerProfilePage() {
   const db = useDB();
   const [session] = useSession();
-  const workerUserId = session.userId!;
-  const user = db.users.find((u) => u.id === workerUserId)!;
-  const profile = db.workerProfiles.find((w) => w.userId === workerUserId)!;
+  const workerUserId = session.userId ?? '';
+  const user = db.users.find((u) => u.id === workerUserId);
+  const profile = db.workerProfiles.find((w) => w.userId === workerUserId);
 
   const [editing, setEditing] = useState(false);
-  const [fullName, setFullName] = useState(profile.fullName);
-  const [phone, setPhone] = useState(profile.phone);
-  const [preferredArea, setPreferredArea] = useState(profile.preferredArea);
-  const [areas, setAreas] = useState<string[]>(profile.areas);
-  const [skills, setSkills] = useState<string[]>(profile.skills);
+  const [fullName, setFullName] = useState(profile?.fullName ?? user?.name ?? '');
+  const [phone, setPhone] = useState(profile?.phone ?? user?.phone ?? '');
+  const [preferredArea, setPreferredArea] = useState(profile?.preferredArea ?? 'Satellite');
+  const [areas, setAreas] = useState<string[]>(profile?.areas ?? ['Satellite']);
+  const [skills, setSkills] = useState<string[]>(profile?.skills ?? []);
   const [skillInput, setSkillInput] = useState('');
-  const [availability, setAvailability] = useState<string[]>(profile.availability);
-  const [experienceYears, setExperienceYears] = useState(String(profile.experienceYears));
-  const [bio, setBio] = useState(profile.bio);
+  const [availability, setAvailability] = useState<string[]>(profile?.availability ?? []);
+  const [experienceYears, setExperienceYears] = useState(String(profile?.experienceYears ?? 0));
+  const [bio, setBio] = useState(profile?.bio ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.fullName);
+      setPhone(profile.phone);
+      setPreferredArea(profile.preferredArea);
+      setAreas(profile.areas);
+      setSkills(profile.skills);
+      setAvailability(profile.availability);
+      setExperienceYears(String(profile.experienceYears));
+      setBio(profile.bio);
+    }
+  }, [profile]);
 
   const toggleArea = (a: string) => setAreas((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
   const toggleAvail = (a: string) => setAvailability((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
@@ -84,6 +97,15 @@ export function WorkerProfilePage() {
     }
   };
 
+  if (!user || !profile) {
+    return (
+      <Card className="p-8 text-center max-w-lg mx-auto mt-6">
+        <h2 className="text-lg font-bold text-ink-900">Loading worker profile...</h2>
+        <p className="mt-2 text-sm text-ink-500">Retrieving your profile details.</p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <SectionTitle
@@ -119,7 +141,7 @@ export function WorkerProfilePage() {
 
       {editing ? (
         <Card className="p-6 space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrap label="Full name" required error={errors.fullName}>
               <Input value={fullName} onChange={(e) => setFullName(e.target.value)} invalid={!!errors.fullName} />
             </FieldWrap>
@@ -191,7 +213,7 @@ export function WorkerProfilePage() {
           </div>
         </Card>
       ) : (
-        <div className="grid lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <Card className="p-5 lg:col-span-2 space-y-5">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Contact</h2>

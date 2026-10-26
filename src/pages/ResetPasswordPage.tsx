@@ -22,13 +22,24 @@ export function ResetPasswordPage() {
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     setSubmitting(true);
-    const res = await updatePassword(password);
-    setSubmitting(false);
-    if (res.error) { setError(res.error); toastError(res.error); return; }
-    setDone(true);
-    toastSuccess('Password updated! You can now log in with your new password.');
-    await signOut();
-    setTimeout(() => navigate('/login'), 2000);
+    try {
+      const res = await updatePassword(password);
+      if (res.error) { setError(res.error); toastError(res.error); return; }
+      setDone(true);
+      toastSuccess('Password updated! You can now log in with your new password.');
+      try {
+        await signOut();
+      } catch (error) {
+        toastError(error instanceof Error ? error.message : 'Could not log out.');
+      }
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not update the password.';
+      setError(message);
+      toastError(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

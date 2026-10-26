@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowLeft, MapPin, Calendar, Clock, Wallet, IndianRupee, Users, CheckCircle2,
   Phone, MessageCircle, Mail, Bookmark, BookmarkCheck, Flag, ShieldCheck, Star, Briefcase,
 } from 'lucide-react';
-import { useDB, useSession, isJobSaved, toggleSaveJob, applyToJob, getApplicationsForWorker, getReviewsForTarget } from '@/data/store';
+import { useDB, useSession, isJobSaved, toggleSaveJob, applyToJob, getApplicationsForWorker, getReviewsForTarget, getAuthorizedProfilePhone } from '@/data/store';
 import { useRouter } from '@/lib/router';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -19,40 +19,75 @@ import {
 } from '@/types';
 import { formatINR, formatDate, shiftDuration, timeTo12h } from '@/lib/utils';
 
-export function JobDetailPage({ jobId }: { jobId: string }) {
+export function JobDetailPage({ jobId, publicMode = false }: { jobId: string; publicMode?: boolean }) {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
   const [applyOpen, setApplyOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [applyError, setApplyError] = useState<string | null>(null);
-  const report = useReportDialog(session.userId!);
+  const report = useReportDialog(session.userId);
+  const workerUserId = session.role === 'worker' ? session.userId : null;
+  const jobsPath = publicMode ? '/jobs' : '/worker/jobs';
 
   const job = db.jobs.find((j) => j.id === jobId);
+  const employer = job ? db.employerProfiles.find((e) => e.id === job.employerId) : undefined;
+  const employerUser = employer ? db.users.find((u) => u.id === employer.userId) : undefined;
+  const myApplication = job && workerUserId
+    ? getApplicationsForWorker(db, workerUserId).find((a) => a.jobId === job.id)
+    : undefined;
+  const employerUserId = employer?.userId;
+  const applicationStatus = myApplication?.status;
+  const [employerPhone, setEmployerPhone] = useState('');
+
+  useEffect(() => {
+    setEmployerPhone('');
+    if (applicationStatus !== 'accepted' || !employerUserId) return;
+
+    let cancelled = false;
+    getAuthorizedProfilePhone(employerUserId)
+      .then((phone) => {
+        if (!cancelled) setEmployerPhone(phone ?? '');
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) toastError(error instanceof Error ? error.message : 'Could not load contact details.');
+      });
+    return () => { cancelled = true; };
+  }, [applicationStatus, employerUserId]);
+
   if (!job) {
     return (
       <Card className="p-8 text-center">
         <p className="text-ink-600">This job is no longer available.</p>
-        <Button className="mt-4" variant="outline" onClick={() => navigate('/worker/jobs')}>
+        <Button className="mt-4" variant="outline" onClick={() => navigate(jobsPath)}>
           Back to jobs
         </Button>
       </Card>
     );
   }
 
-  const employer = db.employerProfiles.find((e) => e.id === job.employerId);
-  const employerUser = employer ? db.users.find((u) => u.id === employer.userId) : undefined;
-  const workerUserId = session.userId!;
-  const saved = isJobSaved(db, workerUserId, job.id);
-  const myApplication = getApplicationsForWorker(db, workerUserId).find((a) => a.jobId === job.id);
+  const saved = workerUserId ? isJobSaved(db, workerUserId, job.id) : false;
   const reviews = employer ? getReviewsForTarget(db, 'employer', employer.id) : [];
 
   const onSave = async () => {
-    await toggleSaveJob(workerUserId, job.id);
-    toastSuccess(saved ? 'Removed from saved' : 'Job saved');
+    if (!workerUserId) {
+      navigate(`/login?next=${encodeURIComponent(`${publicMode ? '/jobs' : '/worker/jobs'}/${job.id}`)}`);
+      return;
+    }
+    const wasSaved = isJobSaved(db, workerUserId, job.id);
+    try {
+      await toggleSaveJob(workerUserId, job.id);
+      toastSuccess(wasSaved ? 'Removed from saved' : 'Job saved');
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not update saved jobs.');
+    }
   };
 
   const submitApply = async () => {
+    if (!workerUserId) {
+      navigate(`/login?next=${encodeURIComponent(`${publicMode ? '/jobs' : '/worker/jobs'}/${job.id}`)}`);
+      return;
+    }
     const res = await applyToJob(job.id, workerUserId, message.trim());
     if (!res.ok) {
       setApplyError(res.error ?? 'Could not apply.');
@@ -74,11 +109,11 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
 
   return (
     <div className="space-y-5">
-      <button onClick={() => navigate('/worker/jobs')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-500 hover:text-ink-800">
+      <button onClick={() => navigate(jobsPath)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-500 hover:text-ink-800">
         <ArrowLeft className="h-4 w-4" /> Back to jobs
       </button>
 
-      <div className="grid lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Main */}
         <div className="lg:col-span-2 space-y-5">
           <Card className="p-6">
@@ -100,7 +135,7 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
               </div>
             </div>
 
-            <div className="mt-5 grid sm:grid-cols-2 gap-3">
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <InfoTile icon={<Calendar className="h-4 w-4" />} label="Date" value={formatDate(job.date)} />
               <InfoTile icon={<Clock className="h-4 w-4" />} label="Shift" value={`${timeTo12h(job.startTime)} – ${timeTo12h(job.endTime)} · ${shiftDuration(job.startTime, job.endTime)}`} />
               <InfoTile icon={<IndianRupee className="h-4 w-4" />} label="Pay" value={`${formatINR(job.payAmount)} ${PAY_BASIS_LABELS[job.payBasis]}`} highlight />
@@ -124,7 +159,7 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
               </ul>
             </div>
 
-            <div className="mt-6 grid sm:grid-cols-2 gap-4">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Required skills</h2>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -175,13 +210,22 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => report.openFor('job', job.id, job.title)}
+                onClick={() => session.userId
+                  ? report.openFor('job', job.id, job.title)
+                  : navigate(`/login?next=${encodeURIComponent(`${publicMode ? '/jobs' : '/worker/jobs'}/${job.id}`)}`)}
                 leftIcon={<Flag className="h-4 w-4" />}
                 className="shrink-0"
               >
                 <span className="hidden sm:inline">Report</span>
               </Button>
-              {myApplication ? (
+              {!workerUserId ? (
+                <Button
+                  fullWidth
+                  onClick={() => navigate(`/login?next=${encodeURIComponent(`${publicMode ? '/jobs' : '/worker/jobs'}/${job.id}`)}`)}
+                >
+                  Log in to apply
+                </Button>
+              ) : myApplication ? (
                 <Button fullWidth disabled>
                   {myApplication.status === 'withdrawn' ? 'Withdrawn' : 'Applied'}
                 </Button>
@@ -219,9 +263,16 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
                 <p className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5 text-ink-400" />{employer.jobsPosted} jobs posted</p>
                 <p className="flex items-center gap-1.5">{contactIcon}Prefers: {CONTACT_PREF_LABELS[job.contactPreference]}</p>
               </div>
-              <p className="mt-3 rounded-lg bg-canvas-100 px-3 py-2 text-[11px] text-ink-500">
-                Contact details are shared only after you are accepted, to protect privacy.
-              </p>
+              {applicationStatus === 'accepted' ? (
+                <p className="mt-3 rounded-lg bg-canvas-100 px-3 py-2 text-sm text-ink-700">
+                  <Phone className="mr-1 inline h-4 w-4 text-ink-500" />
+                  {employerPhone ? <a href={`tel:${employerPhone}`} className="font-semibold">{employerPhone}</a> : 'Contact unavailable'}
+                </p>
+              ) : (
+                <p className="mt-3 rounded-lg bg-canvas-100 px-3 py-2 text-[11px] text-ink-500">
+                  Contact details are shared only after you are accepted, to protect privacy.
+                </p>
+              )}
             </Card>
           )}
 
@@ -295,7 +346,7 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
             />
           </FieldWrap>
           <p className="text-xs text-ink-400">
-            Your profile name, phone, skills and availability will be shared with the employer. You can withdraw this application anytime.
+            Your profile details are shared with the employer to review your application. Contact details are available only after acceptance.
           </p>
         </div>
       </Modal>
@@ -305,7 +356,7 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
   );
 }
 
-function InfoTile({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) {
+function InfoTile({ icon, label, value, highlight }: { icon: ReactNode; label: string; value: string; highlight?: boolean }) {
   return (
     <div className={`rounded-xl border p-3.5 ${highlight ? 'border-brand-200 bg-brand-50/60' : 'border-canvas-200 bg-white'}`}>
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">

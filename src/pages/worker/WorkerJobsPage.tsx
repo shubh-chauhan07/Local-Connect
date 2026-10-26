@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import {
   CATEGORY_LABELS, EMPLOYMENT_TYPE_LABELS, PAY_BASIS_LABELS, type JobCategory, type EmploymentType,
 } from '@/types';
-import { toastSuccess } from '@/components/ui/Toast';
+import { toastError, toastSuccess } from '@/components/ui/Toast';
 
 const CATEGORIES: JobCategory[] = ['retail', 'event_support', 'packing', 'delivery', 'restaurant', 'warehouse', 'office_support'];
 const EMPLOYMENT_TYPES: EmploymentType[] = ['one_day', 'weekend', 'event', 'part_time', 'temporary'];
@@ -24,7 +24,7 @@ const SORTS = [
 
 const AREAS = ['Satellite', 'Bodakdev', 'Vastrapur', 'Prahlad Nagar', 'Ellisbridge', 'Thaltej', 'Naroda', 'Maninagar', 'Bopal'];
 
-export function WorkerJobsPage() {
+export function WorkerJobsPage({ publicMode = false }: { publicMode?: boolean }) {
   const db = useDB();
   const [session] = useSession();
   const { path, navigate } = useRouter();
@@ -38,7 +38,10 @@ export function WorkerJobsPage() {
 
   const [query, setQuery] = useState(initialParams.get('q') ?? '');
   const [area, setArea] = useState(initialParams.get('area') ?? '');
-  const [category, setCategory] = useState<JobCategory | ''>('');
+  const initialCategory = initialParams.get('category');
+  const [category, setCategory] = useState<JobCategory | ''>(
+    CATEGORIES.includes(initialCategory as JobCategory) ? initialCategory as JobCategory : '',
+  );
   const [employmentType, setEmploymentType] = useState<EmploymentType | ''>('');
   const [payBasis, setPayBasis] = useState('');
   const [minPay, setMinPay] = useState('');
@@ -50,9 +53,11 @@ export function WorkerJobsPage() {
   useEffect(() => {
     setQuery(initialParams.get('q') ?? '');
     setArea(initialParams.get('area') ?? '');
+    const nextCategory = initialParams.get('category');
+    setCategory(CATEGORIES.includes(nextCategory as JobCategory) ? nextCategory as JobCategory : '');
   }, [initialParams]);
 
-  const workerUserId = session.userId!;
+  const workerUserId = session.role === 'worker' ? session.userId : null;
 
   const filtered = useMemo(() => {
     let list = db.jobs.filter((j) => j.status === 'published');
@@ -141,9 +146,18 @@ export function WorkerJobsPage() {
   };
 
   const onToggleSave = async (jobId: string) => {
-    await toggleSaveJob(workerUserId, jobId);
-    const saved = isJobSaved(db, workerUserId, jobId);
-    toastSuccess(saved ? 'Job saved' : 'Removed from saved');
+    if (!workerUserId) {
+      const returnTo = publicMode ? path : '/worker/jobs';
+      navigate(`/login?next=${encodeURIComponent(returnTo)}`);
+      return;
+    }
+    const wasSaved = isJobSaved(db, workerUserId, jobId);
+    try {
+      await toggleSaveJob(workerUserId, jobId);
+      toastSuccess(wasSaved ? 'Removed from saved' : 'Job saved');
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not update saved jobs.');
+    }
   };
 
   return (
@@ -190,7 +204,7 @@ export function WorkerJobsPage() {
         </div>
 
         {showFilters && (
-          <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3 border-t border-canvas-100 pt-3 animate-slideUp">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 border-t border-canvas-100 pt-3 animate-slideUp">
             <div>
               <label className="text-xs font-semibold text-ink-600">Category</label>
               <Select value={category} onChange={(e) => setCategory(e.target.value as JobCategory | '')} className="mt-1 h-9">
@@ -289,15 +303,15 @@ export function WorkerJobsPage() {
           />
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((job) => (
             <JobCard
               key={job.id}
               job={job}
               db={db}
-              saved={isJobSaved(db, workerUserId, job.id)}
-              onToggleSave={() => onToggleSave(job.id)}
-              onOpen={() => navigate(`/worker/jobs/${job.id}`)}
+              saved={workerUserId ? isJobSaved(db, workerUserId, job.id) : false}
+              onToggleSave={workerUserId || !publicMode ? () => onToggleSave(job.id) : undefined}
+              onOpen={() => navigate(publicMode ? `/jobs/${job.id}` : `/worker/jobs/${job.id}`)}
             />
           ))}
         </div>

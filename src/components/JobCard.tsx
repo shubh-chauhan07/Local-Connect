@@ -38,6 +38,7 @@ export function JobCard({
       )}
       onClick={onOpen}
       role="button"
+      aria-label={job.title}
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {

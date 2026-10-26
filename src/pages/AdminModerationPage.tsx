@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/shared';
 
 import { formatRelative } from '@/lib/utils';
-import { toastSuccess } from '@/components/ui/Toast';
+import { toastError, toastSuccess } from '@/components/ui/Toast';
 
 export function AdminModerationPage() {
   const db = useDB();
@@ -27,7 +27,7 @@ export function AdminModerationPage() {
       toastSuccess(confirm.action === 'dismiss' ? 'Report dismissed.' : 'Record suspended (demo).');
       setConfirm(null);
     } catch (e) {
-      toastSuccess(e instanceof Error ? e.message : 'Could not update report.');
+      toastError(e instanceof Error ? e.message : 'Could not update report.');
     } finally {
       setActing(false);
     }

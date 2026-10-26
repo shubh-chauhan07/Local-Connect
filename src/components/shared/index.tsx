@@ -25,13 +25,6 @@ export function CategoryIcon({ category, className }: { category: JobCategory; c
   return <Icon className={className} />;
 }
 
-export function categoryIconForName(name: string): LucideIcon {
-  const map: Record<string, LucideIcon> = {
-    ShoppingBag, PartyPopper, Package, Bike, UtensilsCrossed, Warehouse, Briefcase,
-  };
-  return map[name] ?? Briefcase;
-}
-
 export function CategoryBadge({ category, size = 'md' }: { category: JobCategory; size?: 'sm' | 'md' }) {
   return (
     <Badge variant="teal" size={size}>
@@ -144,16 +137,17 @@ export function Logo({ className }: { className?: string }) {
 }
 
 export function Avatar({ name, color, size = 'md', className }: { name: string; color: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  const initials = name
-    .split(' ')
-    .map((p) => p[0])
+  const initials = (name || 'U')
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0] || '')
     .slice(0, 2)
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'U';
   const dim = size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-10 w-10 text-sm';
   return (
     <span
-      className={cn('inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white', dim)}
+      className={cn('inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white', dim, className)}
       style={{ backgroundColor: color }}
     >
       {initials}

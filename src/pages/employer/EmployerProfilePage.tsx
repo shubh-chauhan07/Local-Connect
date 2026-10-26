@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Phone, Building2, Calendar, Star } from 'lucide-react';
 import { useDB, useSession, updateEmployerProfile, getReviewsForTarget } from '@/data/store';
 import { Card, SectionTitle, EmptyState } from '@/components/ui/Card';
@@ -14,20 +14,32 @@ const CATEGORIES: JobCategory[] = ['retail', 'event_support', 'packing', 'delive
 export function EmployerProfilePage() {
   const db = useDB();
   const [session] = useSession();
-  const userId = session.userId!;
-  const user = db.users.find((u) => u.id === userId)!;
-  const profile = db.employerProfiles.find((e) => e.userId === userId)!;
-  const reviews = getReviewsForTarget(db, 'employer', profile.id);
+  const userId = session.userId ?? '';
+  const user = db.users.find((u) => u.id === userId);
+  const profile = db.employerProfiles.find((e) => e.userId === userId);
+  const reviews = profile ? getReviewsForTarget(db, 'employer', profile.id) : [];
 
   const [editing, setEditing] = useState(false);
-  const [businessName, setBusinessName] = useState(profile.businessName);
-  const [category, setCategory] = useState<JobCategory>(profile.category);
-  const [address, setAddress] = useState(profile.address);
-  const [area, setArea] = useState(profile.area);
-  const [phone, setPhone] = useState(profile.phone);
-  const [description, setDescription] = useState(profile.description);
-  const [establishedYear, setEstablishedYear] = useState(String(profile.establishedYear));
+  const [businessName, setBusinessName] = useState(profile?.businessName ?? user?.name ?? '');
+  const [category, setCategory] = useState<JobCategory>(profile?.category ?? 'retail');
+  const [address, setAddress] = useState(profile?.address ?? '');
+  const [area, setArea] = useState(profile?.area ?? 'Satellite');
+  const [phone, setPhone] = useState(profile?.phone ?? user?.phone ?? '');
+  const [description, setDescription] = useState(profile?.description ?? '');
+  const [establishedYear, setEstablishedYear] = useState(String(profile?.establishedYear ?? new Date().getFullYear()));
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (profile) {
+      setBusinessName(profile.businessName);
+      setCategory(profile.category);
+      setAddress(profile.address);
+      setArea(profile.area);
+      setPhone(profile.phone);
+      setDescription(profile.description);
+      setEstablishedYear(String(profile.establishedYear));
+    }
+  }, [profile]);
 
   const [saving, setSaving] = useState(false);
 
@@ -58,6 +70,15 @@ export function EmployerProfilePage() {
     }
   };
 
+  if (!user || !profile) {
+    return (
+      <Card className="p-8 text-center max-w-lg mx-auto mt-6">
+        <h2 className="text-lg font-bold text-ink-900">Loading business profile...</h2>
+        <p className="mt-2 text-sm text-ink-500">Retrieving your business information.</p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <SectionTitle
@@ -83,7 +104,7 @@ export function EmployerProfilePage() {
 
       {editing ? (
         <Card className="p-6 space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrap label="Business name" required error={errors.businessName}>
               <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} invalid={!!errors.businessName} />
             </FieldWrap>
@@ -114,7 +135,7 @@ export function EmployerProfilePage() {
           </div>
         </Card>
       ) : (
-        <div className="grid lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <Card className="p-5 lg:col-span-2 space-y-5">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Contact</h2>

@@ -4,6 +4,7 @@ import { useRouter } from '@/lib/router';
 import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatRelative } from '@/lib/utils';
+import { toastError } from '@/components/ui/Toast';
 
 const typeIcon = {
   application_received: <Briefcase className="h-4 w-4" />,
@@ -18,16 +19,33 @@ export function NotificationsPage() {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const userId = session.userId!;
-  const items = getNotificationsForUser(db, userId);
+  const userId = session.userId ?? '';
+  const items = userId ? getNotificationsForUser(db, userId) : [];
   const unread = items.filter((n) => !n.read).length;
+
+  const markAllRead = async () => {
+    try {
+      await markAllNotificationsRead(userId);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not mark notifications as read.');
+    }
+  };
+
+  const openNotification = async (id: string, link?: string) => {
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not mark notification as read.');
+    }
+    if (link) navigate(link);
+  };
 
   return (
     <div className="space-y-5">
       <SectionTitle
         title="Notifications"
         subtitle={unread > 0 ? `${unread} unread` : 'All caught up'}
-        action={unread > 0 ? <Button variant="outline" size="sm" leftIcon={<CheckCheck className="h-4 w-4" />} onClick={() => { void markAllNotificationsRead(userId); }}>Mark all read</Button> : undefined}
+        action={unread > 0 ? <Button variant="outline" size="sm" leftIcon={<CheckCheck className="h-4 w-4" />} onClick={() => { void markAllRead(); }}>Mark all read</Button> : undefined}
       />
 
       {items.length === 0 ? (
@@ -39,10 +57,7 @@ export function NotificationsPage() {
           {items.map((n) => (
             <button
               key={n.id}
-              onClick={() => {
-                void markNotificationRead(n.id);
-                if (n.link) navigate(n.link);
-              }}
+              onClick={() => { void openNotification(n.id, n.link); }}
               className={`flex w-full items-start gap-3 p-4 text-left hover:bg-canvas-50 transition-colors ${!n.read ? 'bg-brand-50/30' : ''}`}
             >
               <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${!n.read ? 'bg-brand-100 text-brand-700' : 'bg-canvas-100 text-ink-400'}`}>

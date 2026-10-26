@@ -12,9 +12,21 @@ export function EmployerDashboard() {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const userId = session.userId!;
-  const user = db.users.find((u) => u.id === userId)!;
-  const profile = db.employerProfiles.find((e) => e.userId === userId)!;
+  const userId = session.userId ?? '';
+  const user = db.users.find((u) => u.id === userId);
+  const profile = db.employerProfiles.find((e) => e.userId === userId);
+
+  if (!user || !profile) {
+    return (
+      <Card className="p-8 text-center max-w-lg mx-auto">
+        <h2 className="text-lg font-bold text-ink-900">Setting up employer dashboard...</h2>
+        <p className="mt-2 text-sm text-ink-500">Retrieving your business information.</p>
+        <div className="mt-4 flex justify-center">
+          <Button onClick={() => navigate('/employer/profile')}>Go to Profile</Button>
+        </div>
+      </Card>
+    );
+  }
 
   const myJobs = db.jobs.filter((j) => j.employerUserId === userId);
   const activeJobs = myJobs.filter((j) => j.status === 'published');
@@ -89,7 +101,7 @@ export function EmployerDashboard() {
         {activeJobs.length === 0 ? (
           <Card><EmptyState icon={<Briefcase className="h-7 w-7" />} title="No active jobs" description="Post your first job to start receiving applications." action={<Button onClick={() => navigate('/employer/jobs/new')}>Post a job</Button>} /></Card>
         ) : (
-          <div className="mt-3 grid sm:grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {activeJobs.slice(0, 4).map((job) => (
               <Card key={job.id} className="p-4">
                 <div className="flex items-start gap-3">

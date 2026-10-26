@@ -98,10 +98,15 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     const e = pendingEmail || getPendingEmail() || email;
     if (!e) return;
     setSubmitting(true);
-    const res = await resendConfirmation(e);
-    setSubmitting(false);
-    if (res.error) toastError(res.error);
-    else toastSuccess('Confirmation email resent. Check your inbox.');
+    try {
+      const res = await resendConfirmation(e);
+      if (res.error) toastError(res.error);
+      else toastSuccess('Confirmation email resent. Check your inbox.');
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not resend the confirmation email.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ---------- Pending verification view ----------

@@ -51,8 +51,8 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const userId = session.userId!;
-  const profile = db.employerProfiles.find((e) => e.userId === userId)!;
+  const userId = session.userId ?? '';
+  const profile = db.employerProfiles.find((e) => e.userId === userId);
   const editing = editJobId ? db.jobs.find((j) => j.id === editJobId) : undefined;
 
   const [form, setForm] = useState<FormState>(() => {
@@ -86,8 +86,8 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
       responsibilities: '',
       requiredSkills: [],
       workersNeeded: '1',
-      location: profile.address,
-      area: profile.area,
+      location: profile?.address ?? '',
+      area: profile?.area ?? 'Satellite',
       date: todayStr,
       startTime: '09:00',
       endTime: '17:00',
@@ -127,7 +127,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
   const buildJobData = () => {
     const splitLines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
     return {
-      employerId: profile.id,
+      employerId: profile?.id ?? '',
       employerUserId: userId,
       title: form.title.trim(),
       category: form.category,
@@ -186,7 +186,50 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
     setSkillInput('');
   };
 
-  const previewJob = useMemo(() => ({ ...buildJobData(), verification: profile.verification }), [form, profile.verification]);
+  const previewJob = useMemo(() => {
+    const splitLines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
+    return {
+      id: editing?.id ?? 'preview',
+      employerId: profile?.id ?? '',
+      employerUserId: userId ?? '',
+      title: form.title.trim(),
+      category: form.category,
+      description: form.description.trim(),
+      responsibilities: splitLines(form.responsibilities),
+      requiredSkills: form.requiredSkills,
+      workersNeeded: Number(form.workersNeeded),
+      location: form.location.trim(),
+      area: form.area.trim(),
+      city: 'Ahmedabad',
+      date: form.date,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      employmentType: form.employmentType,
+      payAmount: Number(form.payAmount),
+      payBasis: form.payBasis,
+      paymentTiming: form.paymentTiming,
+      paymentMethod: form.paymentMethod,
+      requirements: splitLines(form.requirements),
+      contactPreference: form.contactPreference,
+      benefits: splitLines(form.benefits),
+      status: 'published' as JobStatus,
+      createdAt: editing?.createdAt ?? new Date().toISOString(),
+      verification: profile?.verification ?? 'unverified',
+      applicantsCount: editing?.applicantsCount ?? 0,
+    };
+  }, [editing?.createdAt, editing?.id, editing?.applicantsCount, form, profile?.id, profile?.verification, userId]);
+
+  if (!profile) {
+    return (
+      <Card className="p-8 text-center max-w-lg mx-auto mt-6">
+        <h2 className="text-lg font-bold text-ink-900">Employer profile not found</h2>
+        <p className="mt-2 text-sm text-ink-500">Please make sure your employer profile exists before posting a job.</p>
+        <div className="mt-5 flex justify-center">
+          <Button onClick={() => navigate('/employer/profile')}>Go to Profile</Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -196,7 +239,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
 
       <SectionTitle title={editing ? 'Edit job' : 'Post a new job'} subtitle="Fill in the details. Workers see pay, hours and location upfront." />
 
-      <div className="grid lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           {/* Basics */}
           <Card className="p-5 space-y-4">
@@ -204,7 +247,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
             <FieldWrap label="Job title" required error={errors.title}>
               <Input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Counter Sales Helper — Weekend" invalid={!!errors.title} />
             </FieldWrap>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FieldWrap label="Category" required>
                 <Select value={form.category} onChange={(e) => set('category', e.target.value as JobCategory)}>
                   {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
@@ -249,7 +292,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
             <FieldWrap label="Area" required error={errors.area} hint="Used for filtering by locality">
               <Input value={form.area} onChange={(e) => set('area', e.target.value)} placeholder="e.g. Satellite" invalid={!!errors.area} />
             </FieldWrap>
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FieldWrap label="Date" required error={errors.date}>
                 <Input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} invalid={!!errors.date} />
               </FieldWrap>
@@ -265,7 +308,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
           {/* Pay */}
           <Card className="p-5 space-y-4">
             <h3 className="font-bold text-ink-900">Pay & payment</h3>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FieldWrap label="Pay amount (₹)" required error={errors.payAmount}>
                 <Input type="number" min={1} value={form.payAmount} onChange={(e) => set('payAmount', e.target.value)} invalid={!!errors.payAmount} />
               </FieldWrap>

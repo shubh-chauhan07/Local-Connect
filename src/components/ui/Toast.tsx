@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, AlertCircle, Info, X, XCircle } from 'lucide-react';
@@ -57,7 +58,7 @@ export function Toaster() {
   if (toasts.length === 0) return null;
 
   return createPortal(
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 w-[calc(100vw-2rem)] max-w-sm pointer-events-none">
+    <div className="fixed bottom-20 lg:bottom-4 right-4 z-[60] flex flex-col gap-2 w-[calc(100vw-2rem)] max-w-sm pointer-events-none">
       {toasts.map((t) => (
         <div
           key={t.id}

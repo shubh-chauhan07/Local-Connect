@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Frown, Star, Phone, MapPin, Briefcase, Flag } from 'lucide-react';
 import {
-  useDB, useSession, getApplicationsForEmployer, setApplicationStatus,
+  useDB, useSession, getApplicationsForEmployer, getAuthorizedProfilePhone, setApplicationStatus,
 } from '@/data/store';
 import { useRouter } from '@/lib/router';
 import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
@@ -43,6 +43,24 @@ export function EmployerApplicantsPage() {
   const detailJob = detail ? db.jobs.find((j) => j.id === detail.jobId) : null;
   const detailWorker = detail ? db.users.find((u) => u.id === detail.workerUserId) : null;
   const detailProfile = detail ? db.workerProfiles.find((w) => w.userId === detail.workerUserId) : null;
+  const detailStatus = detail?.status;
+  const detailWorkerId = detailWorker?.id;
+  const [acceptedPhone, setAcceptedPhone] = useState('');
+
+  useEffect(() => {
+    setAcceptedPhone('');
+    if (detailStatus !== 'accepted' || !detailWorkerId) return;
+
+    let cancelled = false;
+    getAuthorizedProfilePhone(detailWorkerId)
+      .then((phone) => {
+        if (!cancelled) setAcceptedPhone(phone ?? '');
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) toastError(error instanceof Error ? error.message : 'Could not load contact details.');
+      });
+    return () => { cancelled = true; };
+  }, [detailStatus, detailWorkerId]);
 
   const [acting, setActing] = useState(false);
 
@@ -138,6 +156,9 @@ export function EmployerApplicantsPage() {
                     <VerificationBadge state={worker.verification} size="sm" />
                   </div>
                   <p className="text-xs text-ink-500 truncate">for {job.title} · applied {formatRelative(app.appliedAt)}</p>
+                  <div className="mt-1 flex items-center gap-2 sm:hidden">
+                    <ApplicationStatusBadge status={app.status} />
+                  </div>
                   {profile && profile.skills.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {profile.skills.slice(0, 3).map((s) => <Badge key={s} variant="neutral" size="sm">{s}</Badge>)}
@@ -184,7 +205,7 @@ export function EmployerApplicantsPage() {
               <Button variant="ghost" size="sm" onClick={() => report.openFor('user', detailWorker.id, detailWorker.name)} leftIcon={<Flag className="h-4 w-4 text-ink-400" />}>Report</Button>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1"><MapPin className="h-3 w-3" />Preferred area</p>
                 <p className="mt-0.5 font-semibold text-ink-800">{detailProfile.preferredArea}</p>
@@ -199,8 +220,12 @@ export function EmployerApplicantsPage() {
               </div>
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1"><Phone className="h-3 w-3" />Phone</p>
-                <p className="mt-0.5 font-semibold text-ink-800">{detailProfile.phone}</p>
-                <p className="mt-0.5 text-[11px] text-ink-400">Contact only after you accept.</p>
+                <p className="mt-0.5 font-semibold text-ink-800">
+                  {detail.status === 'accepted' ? acceptedPhone || 'Contact unavailable' : 'Available after acceptance'}
+                </p>
+                {detail.status !== 'accepted' && (
+                  <p className="mt-0.5 text-[11px] text-ink-400">Contact only after you accept.</p>
+                )}
               </div>
             </div>
 
