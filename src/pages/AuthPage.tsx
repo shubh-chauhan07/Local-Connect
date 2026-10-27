@@ -22,7 +22,8 @@ type AuthView = 'login' | 'signup' | 'pending' | 'forgot';
 export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const { navigate } = useRouter();
   const [view, setView] = useState<AuthView>(mode);
-  const [role, setRole] = useState<Role>('worker');
+  const queryParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const [role, setRole] = useState<Role>(queryParams.get('role') === 'employer' ? 'employer' : 'worker');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -217,12 +218,18 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-extrabold font-display text-ink-900">
-              {isSignup ? 'Create your account' : 'Welcome back'}
+              {isSignup
+                ? (role === 'employer' ? 'Create employer account' : 'Create worker account')
+                : (role === 'employer' ? 'Employer login' : 'Worker login')}
             </h1>
             <p className="mt-1.5 text-sm text-ink-500">
               {isSignup
-                ? 'Join LocalConnect to find or post local work in Ahmedabad. Email verification required.'
-                : 'Log in to your LocalConnect account.'}
+                ? (role === 'employer'
+                    ? 'Post short-term gigs and hire local verified help in Ahmedabad.'
+                    : 'Find short-term shifts and gigs in Ahmedabad with upfront pay.')
+                : (role === 'employer'
+                    ? 'Log in to manage your job listings, shifts, and applicants.'
+                    : 'Log in to apply for gigs, save jobs, and track applications.')}
             </p>
           </div>
 
@@ -241,15 +248,18 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             {(['worker', 'employer'] as Role[]).map((r) => (
               <button
                 key={r}
+                type="button"
                 onClick={() => setRole(r)}
-                disabled={view === 'login'}
+                aria-pressed={role === r}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-colors disabled:opacity-60',
-                  role === r ? 'bg-white text-brand-700 shadow-sm' : 'text-ink-500 hover:text-ink-700',
+                  'flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-all cursor-pointer',
+                  role === r
+                    ? 'bg-white text-brand-700 shadow-sm font-bold'
+                    : 'text-ink-500 hover:text-ink-800 hover:bg-canvas-200/50',
                 )}
               >
                 {r === 'worker' ? <UserIcon className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                {r}
+                {r === 'worker' ? 'Worker' : 'Employer'}
               </button>
             ))}
           </div>
@@ -317,15 +327,13 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             )}
           </p>
 
-          {isSignup && (
-            <p className="mt-3 text-center text-xs text-ink-400">
-              {role === 'worker' ? (
-                <><Briefcase className="inline h-3 w-3 mr-1" />Workers apply to jobs and track applications.</>
-              ) : (
-                <><Building2 className="inline h-3 w-3 mr-1" />Employers post jobs and review applicants.</>
-              )}
-            </p>
-          )}
+          <p className="mt-3 text-center text-xs text-ink-500">
+            {role === 'worker' ? (
+              <><Briefcase className="inline h-3.5 w-3.5 mr-1 text-brand-600" />Workers apply to gigs, track earnings, and manage shifts.</>
+            ) : (
+              <><Building2 className="inline h-3.5 w-3.5 mr-1 text-brand-600" />Employers post short-term gigs and review worker applicants.</>
+            )}
+          </p>
 
           <div className="mt-6 flex items-center justify-center gap-2">
             <Badge variant="neutral" size="sm"><ShieldCheck className="h-3 w-3" /> Email verified</Badge>
