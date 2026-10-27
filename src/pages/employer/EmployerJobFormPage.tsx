@@ -23,6 +23,16 @@ const PAYMENT_TIMINGS: PaymentTiming[] = ['same_day', 'end_of_shift', 'weekly', 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'upi', 'bank_transfer', 'cash_or_upi'];
 const CONTACT_PREFS: ContactPreference[] = ['call', 'whatsapp', 'app_message', 'email'];
 
+const SUGGESTED_SKILLS: Record<JobCategory, string[]> = {
+  retail: ['Counter sales', 'Billing / Cashier', 'Stock replenishment', 'Customer service', 'Barcode scanning'],
+  restaurant: ['Food prep helper', 'Table service', 'Dishwashing', 'Kitchen helper', 'Order packing'],
+  packing: ['Order packaging', 'Labeling', 'Box sealing', 'Quality check', 'Bubble wrapping'],
+  delivery: ['Two-wheeler driving', 'Parcel delivery', 'Smartphone / GPS', 'Ahmedabad area knowledge'],
+  warehouse: ['Loading / Unloading', 'Inventory count', 'Sorting items', 'Material handling'],
+  event_support: ['Guest assistance', 'Registration counter', 'Ushering', 'Stage setup support'],
+  office_support: ['Document filing', 'Data entry', 'Reception support', 'Photocopying'],
+};
+
 interface FormState {
   title: string;
   category: JobCategory;
@@ -182,10 +192,19 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
     }
   };
 
-  const addSkill = () => {
-    const v = skillInput.trim();
-    if (v && !form.requiredSkills.includes(v)) set('requiredSkills', [...form.requiredSkills, v]);
-    setSkillInput('');
+  const addSkill = (customSkill?: string) => {
+    const raw = (customSkill ?? skillInput).trim();
+    if (!raw) return;
+    const items = raw.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
+    const current = Array.isArray(form.requiredSkills) ? form.requiredSkills : [];
+    const next = [...current];
+    for (const item of items) {
+      if (!next.includes(item)) {
+        next.push(item);
+      }
+    }
+    set('requiredSkills', next);
+    if (!customSkill) setSkillInput('');
   };
 
   const previewJob = useMemo(() => {
@@ -264,15 +283,61 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
             <FieldWrap label="Responsibilities" hint="One per line">
               <Textarea value={form.responsibilities} onChange={(e) => set('responsibilities', e.target.value)} rows={3} placeholder="Operate billing counter&#10;Restock shelves&#10;Help customers" />
             </FieldWrap>
-            <FieldWrap label="Required skills">
+            <FieldWrap label="Required skills" hint="Type a skill and press Enter or click Add (or tap suggestions below)">
               <div className="flex gap-2">
-                <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }} placeholder="e.g. Counter sales" />
-                <Button type="button" variant="outline" onClick={addSkill} leftIcon={<Plus className="h-4 w-4" />}>Add</Button>
+                <Input
+                  value={skillInput}
+                  onChange={(e) => setSkillInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      addSkill();
+                    }
+                  }}
+                  placeholder="e.g. Counter sales, Billing"
+                />
+                <Button type="button" variant="outline" onClick={() => addSkill()} leftIcon={<Plus className="h-4 w-4" />}>
+                  Add
+                </Button>
               </div>
-              {form.requiredSkills.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {form.requiredSkills.map((s) => (
-                    <Badge key={s} variant="neutral" size="sm">{s}<button onClick={() => set('requiredSkills', form.requiredSkills.filter((x) => x !== s))} className="ml-1"><X className="h-3 w-3" /></button></Badge>
+
+              {/* Suggestions */}
+              {SUGGESTED_SKILLS[form.category] && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-ink-400 font-medium mr-1">Suggestions:</span>
+                  {SUGGESTED_SKILLS[form.category]
+                    .filter((s) => !(form.requiredSkills ?? []).includes(s))
+                    .map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => addSkill(s)}
+                        className="rounded-md border border-dashed border-canvas-300 bg-white px-2 py-0.5 text-xs text-ink-600 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                      >
+                        + {s}
+                      </button>
+                    ))}
+                </div>
+              )}
+
+              {(form.requiredSkills ?? []).length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {(form.requiredSkills ?? []).map((s) => (
+                    <Badge key={s} variant="brand" size="sm" className="gap-1 pl-2.5 pr-1.5 py-1">
+                      <span>{s}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          set('requiredSkills', (form.requiredSkills ?? []).filter((x) => x !== s));
+                        }}
+                        className="rounded hover:bg-brand-200 p-0.5 text-brand-700 transition-colors"
+                        aria-label={`Remove ${s}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
                   ))}
                 </div>
               )}

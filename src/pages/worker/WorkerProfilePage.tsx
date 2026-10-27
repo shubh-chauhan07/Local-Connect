@@ -47,10 +47,16 @@ export function WorkerProfilePage() {
 
   const toggleArea = (a: string) => setAreas((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
   const toggleAvail = (a: string) => setAvailability((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
-  const addSkill = () => {
-    const v = skillInput.trim();
-    if (v && !skills.includes(v)) setSkills((p) => [...p, v]);
-    setSkillInput('');
+  const addSkill = (customSkill?: string) => {
+    const raw = (customSkill ?? skillInput).trim();
+    if (!raw) return;
+    const items = raw.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
+    const next = [...skills];
+    for (const item of items) {
+      if (!next.includes(item)) next.push(item);
+    }
+    setSkills(next);
+    if (!customSkill) setSkillInput('');
   };
 
   const [saving, setSaving] = useState(false);
@@ -193,14 +199,37 @@ export function WorkerProfilePage() {
 
           <FieldWrap label="Skills" hint="Press Enter or click Add to add a skill">
             <div className="flex gap-2">
-              <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }} placeholder="e.g. Counter sales" />
-              <Button type="button" variant="outline" onClick={addSkill} leftIcon={<Plus className="h-4 w-4" />}>Add</Button>
+              <Input
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addSkill();
+                  }
+                }}
+                placeholder="e.g. Counter sales, Billing"
+              />
+              <Button type="button" variant="outline" onClick={() => addSkill()} leftIcon={<Plus className="h-4 w-4" />}>
+                Add
+              </Button>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {skills.map((s) => (
-                <Badge key={s} variant="neutral" size="sm">
-                  {s}
-                  <button onClick={() => setSkills((p) => p.filter((x) => x !== s))} className="ml-1"><X className="h-3 w-3" /></button>
+                <Badge key={s} variant="neutral" size="sm" className="gap-1 pl-2.5 pr-1.5 py-1">
+                  <span>{s}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSkills((p) => p.filter((x) => x !== s));
+                    }}
+                    className="ml-1 rounded hover:bg-canvas-200 p-0.5 text-ink-500 hover:text-ink-800 transition-colors"
+                    aria-label={`Remove ${s}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </Badge>
               ))}
             </div>
