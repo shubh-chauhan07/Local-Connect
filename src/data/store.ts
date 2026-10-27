@@ -104,9 +104,10 @@ async function loadDatabase(): Promise<void> {
   dbLoading = true;
   dbError = null;
   try {
-    const [usersR, empR, jobsR, appsR, savedR, notifR, reviewsR, reportsR] = await Promise.all([
+    const [usersR, empR, wpR, jobsR, appsR, savedR, notifR, reviewsR, reportsR] = await Promise.all([
       supabase.from('users').select('id,role,name,verification,createdAt,avatarColor'),
       supabase.from('employer_profiles').select('id,userId,businessName,category,address,area,city,description,verification,rating,ratingCount,jobsPosted,establishedYear'),
+      supabase.from('worker_profiles').select('id,userId,fullName,preferredArea,areas,skills,availability,experienceYears,bio,rating,ratingCount,completedJobs,profileCompletion,workHistory'),
       supabase.from('jobs').select('*'),
       supabase.from('applications').select('*'),
       supabase.from('saved_jobs').select('*'),
@@ -114,9 +115,6 @@ async function loadDatabase(): Promise<void> {
       supabase.from('reviews').select('*'),
       supabase.from('reports').select('*'),
     ]);
-    const wpR = authState.session.userId
-      ? await supabase.from('worker_profiles').select('id,userId,fullName,preferredArea,areas,skills,availability,experienceYears,bio,rating,ratingCount,completedJobs,profileCompletion,workHistory')
-      : { data: [], error: null };
 
     const failedQuery = [
       { table: 'users', error: usersR.error },
@@ -846,19 +844,71 @@ export async function setReportStatus(reportId: string, status: Report['status']
 
 export async function updateWorkerProfile(userId: string, patch: Partial<WorkerProfile>): Promise<void> {
   const wp = dbCache.workerProfiles.find((w) => w.userId === userId);
-  if (!wp) throw new Error('Worker profile not found.');
   const updateData: Record<string, unknown> = { ...patch };
   if (patch.workHistory) updateData.workHistory = JSON.stringify(patch.workHistory);
-  const { error } = await supabase.from('worker_profiles').update(updateData).eq('id', wp.id);
-  throwOnSupabaseError(error, 'Could not update worker profile');
+
+  if (!wp) {
+    const { data: existingWp } = await supabase.from('worker_profiles').select('id').eq('userId', userId).maybeSingle();
+    if (existingWp?.id) {
+      const { error } = await supabase.from('worker_profiles').update(updateData).eq('id', existingWp.id);
+      throwOnSupabaseError(error, 'Could not update worker profile');
+    } else {
+      const { error } = await supabase.from('worker_profiles').insert({
+        id: newId('wp'),
+        userId,
+        fullName: patch.fullName ?? 'Worker',
+        phone: patch.phone ?? '',
+        preferredArea: patch.preferredArea ?? 'Satellite',
+        areas: patch.areas ?? ['Satellite'],
+        skills: patch.skills ?? [],
+        availability: patch.availability ?? [],
+        experienceYears: patch.experienceYears ?? 0,
+        bio: patch.bio ?? '',
+        rating: 0,
+        ratingCount: 0,
+        completedJobs: 0,
+        profileCompletion: patch.profileCompletion ?? 50,
+        workHistory: JSON.stringify(patch.workHistory ?? []),
+      });
+      throwOnSupabaseError(error, 'Could not create worker profile');
+    }
+  } else {
+    const { error } = await supabase.from('worker_profiles').update(updateData).eq('id', wp.id);
+    throwOnSupabaseError(error, 'Could not update worker profile');
+  }
   await loadDatabase();
 }
 
 export async function updateEmployerProfile(userId: string, patch: Partial<EmployerProfile>): Promise<void> {
   const ep = dbCache.employerProfiles.find((e) => e.userId === userId);
-  if (!ep) throw new Error('Employer profile not found.');
-  const { error } = await supabase.from('employer_profiles').update(patch).eq('id', ep.id);
-  throwOnSupabaseError(error, 'Could not update employer profile');
+  if (!ep) {
+    const { data: existingEp } = await supabase.from('employer_profiles').select('id').eq('userId', userId).maybeSingle();
+    if (existingEp?.id) {
+      const { error } = await supabase.from('employer_profiles').update(patch).eq('id', existingEp.id);
+      throwOnSupabaseError(error, 'Could not update employer profile');
+    } else {
+      const { error } = await supabase.from('employer_profiles').insert({
+        id: newId('ep'),
+        userId,
+        businessName: patch.businessName ?? 'Business',
+        category: patch.category ?? 'retail',
+        address: patch.address ?? '',
+        area: patch.area ?? 'Satellite',
+        city: 'Ahmedabad',
+        phone: patch.phone ?? '',
+        description: patch.description ?? '',
+        verification: 'unverified',
+        rating: 0,
+        ratingCount: 0,
+        jobsPosted: 0,
+        establishedYear: patch.establishedYear ?? new Date().getFullYear(),
+      });
+      throwOnSupabaseError(error, 'Could not create employer profile');
+    }
+  } else {
+    const { error } = await supabase.from('employer_profiles').update(patch).eq('id', ep.id);
+    throwOnSupabaseError(error, 'Could not update employer profile');
+  }
   await loadDatabase();
 }
 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, FieldWrap, Textarea, Select } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar, StarRating, VerificationBadge } from '@/components/shared';
-import { CATEGORY_LABELS } from '@/types';
+import { CATEGORY_LABELS, type WorkerProfile, type WorkHistoryItem, type JobCategory } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { toastSuccess, toastError } from '@/components/ui/Toast';
 
@@ -97,7 +97,25 @@ export function WorkerProfilePage() {
     }
   };
 
-  if (!user || !profile) {
+  const effectiveProfile: WorkerProfile = profile ?? {
+    id: `wp_${workerUserId}`,
+    userId: workerUserId,
+    fullName: user?.name ?? fullName ?? 'Worker',
+    phone: user?.phone ?? phone ?? '',
+    preferredArea: preferredArea || 'Satellite, Ahmedabad',
+    areas: areas && areas.length ? areas : ['Satellite'],
+    skills: skills || [],
+    availability: availability && availability.length ? availability : ['Weekday mornings'],
+    experienceYears: Number(experienceYears) || 0,
+    bio: bio || '',
+    rating: 0,
+    ratingCount: 0,
+    completedJobs: 0,
+    profileCompletion: 40,
+    workHistory: [],
+  };
+
+  if (!workerUserId) {
     return (
       <Card className="p-8 text-center max-w-lg mx-auto mt-6">
         <h2 className="text-lg font-bold text-ink-900">Loading worker profile...</h2>
@@ -116,24 +134,24 @@ export function WorkerProfilePage() {
       {/* Header card */}
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <Avatar name={user.name} color={user.avatarColor} size="lg" />
+          <Avatar name={user?.name ?? effectiveProfile.fullName} color={user?.avatarColor ?? '#10b981'} size="lg" />
           <div className="flex-1">
-            <h1 className="text-xl font-extrabold font-display text-ink-900">{profile.fullName}</h1>
-            <p className="text-sm text-ink-500 flex items-center gap-1.5"><MapPin className="h-4 w-4" />{profile.preferredArea}</p>
+            <h1 className="text-xl font-extrabold font-display text-ink-900">{effectiveProfile.fullName}</h1>
+            <p className="text-sm text-ink-500 flex items-center gap-1.5"><MapPin className="h-4 w-4" />{effectiveProfile.preferredArea}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <VerificationBadge state={user.verification} size="sm" />
-              {profile.rating > 0 && <StarRating value={profile.rating} count={profile.ratingCount} />}
-              <Badge variant="neutral" size="sm">{profile.completedJobs} jobs done</Badge>
+              <VerificationBadge state={user?.verification ?? 'unverified'} size="sm" />
+              {effectiveProfile.rating > 0 && <StarRating value={effectiveProfile.rating} count={effectiveProfile.ratingCount} />}
+              <Badge variant="neutral" size="sm">{effectiveProfile.completedJobs} jobs done</Badge>
             </div>
           </div>
           {/* Completion */}
           <div className="sm:w-48">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-ink-600">Profile completion</span>
-              <span className="font-bold text-brand-600">{profile.profileCompletion}%</span>
+              <span className="font-bold text-brand-600">{effectiveProfile.profileCompletion}%</span>
             </div>
             <div className="mt-1.5 h-2 w-full rounded-full bg-canvas-100">
-              <div className="h-2 rounded-full bg-brand-500" style={{ width: `${profile.profileCompletion}%` }} />
+              <div className="h-2 rounded-full bg-brand-500" style={{ width: `${effectiveProfile.profileCompletion}%` }} />
             </div>
           </div>
         </div>
@@ -217,30 +235,30 @@ export function WorkerProfilePage() {
           <Card className="p-5 lg:col-span-2 space-y-5">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Contact</h2>
-              <p className="mt-1.5 flex items-center gap-2 text-sm text-ink-700"><Phone className="h-4 w-4 text-ink-400" />{profile.phone}</p>
+              <p className="mt-1.5 flex items-center gap-2 text-sm text-ink-700"><Phone className="h-4 w-4 text-ink-400" />{effectiveProfile.phone || 'No phone set'}</p>
             </div>
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Skills</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {profile.skills.length ? profile.skills.map((s) => <Badge key={s} variant="brand" size="sm">{s}</Badge>) : <p className="text-sm text-ink-400">No skills added yet.</p>}
+                {(effectiveProfile.skills ?? []).length ? (effectiveProfile.skills ?? []).map((s: string) => <Badge key={s} variant="brand" size="sm">{s}</Badge>) : <p className="text-sm text-ink-400">No skills added yet.</p>}
               </div>
             </div>
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Availability</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {profile.availability.length ? profile.availability.map((a) => <Badge key={a} variant="teal" size="sm">{a}</Badge>) : <p className="text-sm text-ink-400">Not set.</p>}
+                {(effectiveProfile.availability ?? []).length ? (effectiveProfile.availability ?? []).map((a: string) => <Badge key={a} variant="teal" size="sm">{a}</Badge>) : <p className="text-sm text-ink-400">Not set.</p>}
               </div>
             </div>
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Areas</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {profile.areas.map((a) => <Badge key={a} variant="neutral" size="sm">{a}</Badge>)}
+                {(effectiveProfile.areas ?? []).map((a: string) => <Badge key={a} variant="neutral" size="sm">{a}</Badge>)}
               </div>
             </div>
-            {profile.bio && (
+            {effectiveProfile.bio && (
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">About</h2>
-                <p className="mt-1.5 text-sm text-ink-700">{profile.bio}</p>
+                <p className="mt-1.5 text-sm text-ink-700">{effectiveProfile.bio}</p>
               </div>
             )}
           </Card>
@@ -248,14 +266,14 @@ export function WorkerProfilePage() {
           {/* Work history */}
           <Card className="p-5">
             <h2 className="font-bold text-ink-900">Work history & reviews</h2>
-            {profile.workHistory.length === 0 ? (
+            {!Array.isArray(effectiveProfile.workHistory) || effectiveProfile.workHistory.length === 0 ? (
               <EmptyState className="py-6" icon={<Briefcase className="h-6 w-6" />} title="No completed work yet" description="Your completed jobs and reviews will appear here." />
             ) : (
               <div className="mt-3 space-y-3">
-                {profile.workHistory.map((w) => (
+                {effectiveProfile.workHistory.map((w: WorkHistoryItem) => (
                   <div key={w.id} className="border-b border-canvas-100 pb-3 last:border-0">
                     <p className="font-semibold text-ink-900 text-sm">{w.jobTitle}</p>
-                    <p className="text-xs text-ink-500">{w.employerName} · {CATEGORY_LABELS[w.category]} · {formatDate(w.completedOn)}</p>
+                    <p className="text-xs text-ink-500">{w.employerName} · {CATEGORY_LABELS[w.category as JobCategory] ?? w.category} · {formatDate(w.completedOn)}</p>
                     <div className="mt-1.5 flex items-center gap-2">
                       <StarRating value={w.rating} size="sm" />
                     </div>
