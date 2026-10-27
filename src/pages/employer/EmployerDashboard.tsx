@@ -5,7 +5,7 @@ import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
 import { JobStatusBadge, CategoryIcon, ApplicationStatusBadge, Avatar, VerificationBadge, StarRating } from '@/components/shared';
-import { PAY_BASIS_LABELS } from '@/types';
+import { PAY_BASIS_LABELS, type EmployerProfile } from '@/types';
 import { formatRelative, formatDate, formatINR } from '@/lib/utils';
 
 export function EmployerDashboard() {
@@ -16,7 +16,24 @@ export function EmployerDashboard() {
   const user = db.users.find((u) => u.id === userId);
   const profile = db.employerProfiles.find((e) => e.userId === userId);
 
-  if (!user || !profile) {
+  const effectiveProfile: EmployerProfile = profile ?? {
+    id: `ep_${userId}`,
+    userId,
+    businessName: user?.name ? `${user.name}'s Business` : 'My Business',
+    category: 'retail',
+    address: 'Ahmedabad',
+    area: 'Satellite',
+    city: 'Ahmedabad',
+    phone: user?.phone ?? '',
+    description: '',
+    verification: 'unverified',
+    rating: 0,
+    ratingCount: 0,
+    jobsPosted: 0,
+    establishedYear: new Date().getFullYear(),
+  };
+
+  if (!userId) {
     return (
       <Card className="p-8 text-center max-w-lg mx-auto">
         <h2 className="text-lg font-bold text-ink-900">Setting up employer dashboard...</h2>
@@ -45,13 +62,13 @@ export function EmployerDashboard() {
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-br from-ink-900 to-ink-800 p-5 sm:p-6 text-white">
           <div className="flex items-center gap-4">
-            <Avatar name={user.name} color={user.avatarColor} size="lg" className="shrink-0" />
+            <Avatar name={user?.name ?? effectiveProfile.businessName} color={user?.avatarColor ?? '#10b981'} size="lg" className="shrink-0" />
             <div className="min-w-0">
               <p className="text-ink-300 text-sm">Employer dashboard</p>
-              <h1 className="text-xl sm:text-2xl font-extrabold font-display truncate">{profile.businessName}</h1>
+              <h1 className="text-xl sm:text-2xl font-extrabold font-display truncate">{effectiveProfile.businessName}</h1>
               <div className="mt-1 flex items-center gap-2">
-                <VerificationBadge state={profile.verification} size="sm" />
-                {profile.ratingCount > 0 && <StarRating value={profile.rating} count={profile.ratingCount} />}
+                <VerificationBadge state={effectiveProfile.verification} size="sm" />
+                {effectiveProfile.ratingCount > 0 && <StarRating value={effectiveProfile.rating} count={effectiveProfile.ratingCount} />}
               </div>
             </div>
           </div>

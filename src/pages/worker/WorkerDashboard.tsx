@@ -1,11 +1,13 @@
 import { ArrowRight, Briefcase, Bookmark, FileText, TrendingUp } from 'lucide-react';
-import { useDB, useSession, getApplicationsForWorker, getSavedJobsForWorker, isJobSaved } from '@/data/store';
+import { useDB, useSession, getApplicationsForWorker, getSavedJobsForWorker, isJobSaved, toggleSaveJob } from '@/data/store';
 import { useRouter, linkProps } from '@/lib/router';
 import { JobCard } from '@/components/JobCard';
 import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar, ApplicationStatusBadge, CategoryIcon } from '@/components/shared';
 import { formatDate, formatRelative } from '@/lib/utils';
+import { toastSuccess, toastError } from '@/components/ui/Toast';
+import { type WorkerProfile } from '@/types';
 
 export function WorkerDashboard() {
   const db = useDB();
@@ -15,7 +17,25 @@ export function WorkerDashboard() {
   const user = db.users.find((u) => u.id === workerUserId);
   const profile = db.workerProfiles.find((w) => w.userId === workerUserId);
 
-  if (!user || !profile) {
+  const effectiveProfile: WorkerProfile = profile ?? {
+    id: `wp_${workerUserId}`,
+    userId: workerUserId,
+    fullName: user?.name ?? 'Worker',
+    phone: user?.phone ?? '',
+    preferredArea: 'Satellite, Ahmedabad',
+    areas: ['Satellite', 'Bodakdev', 'Vastrapur'],
+    skills: [],
+    availability: ['Weekday mornings', 'Weekends'],
+    experienceYears: 0,
+    bio: '',
+    rating: 0,
+    ratingCount: 0,
+    completedJobs: 0,
+    profileCompletion: 40,
+    workHistory: [],
+  };
+
+  if (!workerUserId) {
     return (
       <Card className="p-8 text-center max-w-lg mx-auto">
         <h2 className="text-lg font-bold text-ink-900">Setting up your profile...</h2>
@@ -28,6 +48,17 @@ export function WorkerDashboard() {
     );
   }
 
+  const handleToggleSave = async (jobId: string) => {
+    if (!workerUserId) return;
+    const wasSaved = isJobSaved(db, workerUserId, jobId);
+    try {
+      await toggleSaveJob(workerUserId, jobId);
+      toastSuccess(wasSaved ? 'Removed from saved' : 'Job saved');
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : 'Could not update saved jobs.');
+    }
+  };
+
   const myApps = getApplicationsForWorker(db, workerUserId);
   const saved = getSavedJobsForWorker(db, workerUserId);
   const upcoming = myApps
@@ -38,10 +69,10 @@ export function WorkerDashboard() {
     .sort((a, b) => a!.date.localeCompare(b!.date));
 
   const nearby = db.jobs
-    .filter((j) => j.status === 'published' && profile.areas.some((a) => j.area.includes(a)))
+    .filter((j) => j.status === 'published' && (effectiveProfile.areas ?? []).some((a) => (j.area ?? '').toLowerCase().includes(a.toLowerCase())))
     .slice(0, 6);
   const recommended = db.jobs
-    .filter((j) => j.status === 'published' && j.requiredSkills.some((s) => profile.skills.includes(s)))
+    .filter((j) => j.status === 'published' && (j.requiredSkills ?? []).some((s) => (effectiveProfile.skills ?? []).includes(s)))
     .slice(0, 3);
   const fillRest = db.jobs.filter((j) => j.status === 'published' && !recommended.includes(j)).slice(0, 3 - recommended.length);
   const recommendedFinal = [...recommended, ...fillRest].slice(0, 3);
@@ -59,11 +90,11 @@ export function WorkerDashboard() {
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-br from-brand-600 to-teal-600 p-6 text-white">
           <div className="flex items-center gap-4">
-            <Avatar name={user.name} color={user.avatarColor} size="lg" />
+            <Avatar name={user?.name ?? effectiveProfile.fullName} color={user?.avatarColor ?? '#10b981'} size="lg" />
             <div>
               <p className="text-brand-50/90 text-sm">Welcome back,</p>
-              <h1 className="text-2xl font-extrabold font-display">{user.name}</h1>
-              <p className="mt-0.5 text-sm text-brand-50/80">{profile.preferredArea} · {profile.completedJobs} jobs completed</p>
+              <h1 className="text-2xl font-extrabold font-display">{user?.name ?? effectiveProfile.fullName}</h1>
+              <p className="mt-0.5 text-sm text-brand-50/80">{effectiveProfile.preferredArea} · {effectiveProfile.completedJobs} jobs completed</p>
             </div>
           </div>
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -123,7 +154,7 @@ export function WorkerDashboard() {
               job={job!}
               db={db}
               saved={isJobSaved(db, workerUserId, job!.id)}
-              onToggleSave={() => navigate(`/worker/jobs/${job!.id}`)}
+              onToggleSave={() => { void handleToggleSave(job!.id); }}
               onOpen={() => navigate(`/worker/jobs/${job!.id}`)}
             />
           ))}
@@ -134,7 +165,7 @@ export function WorkerDashboard() {
       <div>
         <SectionTitle
           title="Nearby jobs"
-          subtitle={`Open now in ${profile.areas.join(', ') || 'Ahmedabad'}`}
+          subtitle={`Open now in ${effectiveProfile.areas.join(', ') || 'Ahmedabad'}`}
           action={<Button variant="ghost" size="sm" onClick={() => navigate('/worker/jobs')} rightIcon={<ArrowRight className="h-4 w-4" />}>See all</Button>}
         />
         {nearby.length === 0 ? (
@@ -147,7 +178,7 @@ export function WorkerDashboard() {
                 job={job}
                 db={db}
                 saved={isJobSaved(db, workerUserId, job.id)}
-                onToggleSave={() => navigate(`/worker/jobs/${job.id}`)}
+                onToggleSave={() => { void handleToggleSave(job.id); }}
                 onOpen={() => navigate(`/worker/jobs/${job.id}`)}
               />
             ))}

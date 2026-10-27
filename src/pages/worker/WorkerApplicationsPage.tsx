@@ -18,7 +18,7 @@ export function WorkerApplicationsPage() {
   const db = useDB();
   const [session] = useSession();
   const { navigate } = useRouter();
-  const workerUserId = session.userId!;
+  const workerUserId = session.userId ?? '';
   const allApps = getApplicationsForWorker(db, workerUserId);
 
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');

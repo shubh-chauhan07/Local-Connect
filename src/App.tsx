@@ -213,11 +213,11 @@ export default function App() {
       <AppShell>
         <RouteGuard allow={isEmployer}>
           {route === '/employer' && <EmployerDashboard />}
-          {route === '/employer/jobs/new' && <EmployerJobFormPage />}
+          {(route === '/employer/jobs/new' || route === '/employer/post') && <EmployerJobFormPage />}
           {route.startsWith('/employer/jobs/') && route.endsWith('/edit') && (
             <EmployerJobFormPage editJobId={route.split('/')[3]} />
           )}
-          {route === '/employer/jobs' && <EmployerManageJobsPage />}
+          {(route === '/employer/jobs' || route === '/employer/manage') && <EmployerManageJobsPage />}
           {route === '/employer/applicants' && <EmployerApplicantsPage />}
           {route === '/employer/profile' && <EmployerProfilePage />}
           {route === '/employer/notifications' && <NotificationsPage />}

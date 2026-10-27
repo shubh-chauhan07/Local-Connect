@@ -55,6 +55,8 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
   const profile = db.employerProfiles.find((e) => e.userId === userId);
   const editing = editJobId ? db.jobs.find((j) => j.id === editJobId) : undefined;
 
+  const effectiveEmployerId = profile?.id ?? `ep_${userId}`;
+
   const [form, setForm] = useState<FormState>(() => {
     if (editing) {
       return {
@@ -86,7 +88,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
       responsibilities: '',
       requiredSkills: [],
       workersNeeded: '1',
-      location: profile?.address ?? '',
+      location: profile?.address ?? 'Ahmedabad',
       area: profile?.area ?? 'Satellite',
       date: todayStr,
       startTime: '09:00',
@@ -127,7 +129,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
   const buildJobData = () => {
     const splitLines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
     return {
-      employerId: profile?.id ?? '',
+      employerId: profile?.id ?? effectiveEmployerId,
       employerUserId: userId,
       title: form.title.trim(),
       category: form.category,
@@ -190,7 +192,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
     const splitLines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
     return {
       id: editing?.id ?? 'preview',
-      employerId: profile?.id ?? '',
+      employerId: profile?.id ?? effectiveEmployerId,
       employerUserId: userId ?? '',
       title: form.title.trim(),
       category: form.category,
@@ -217,16 +219,13 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
       verification: profile?.verification ?? 'unverified',
       applicantsCount: editing?.applicantsCount ?? 0,
     };
-  }, [editing?.createdAt, editing?.id, editing?.applicantsCount, form, profile?.id, profile?.verification, userId]);
+  }, [editing?.createdAt, editing?.id, editing?.applicantsCount, form, profile?.id, profile?.verification, userId, effectiveEmployerId]);
 
-  if (!profile) {
+  if (!userId) {
     return (
       <Card className="p-8 text-center max-w-lg mx-auto mt-6">
-        <h2 className="text-lg font-bold text-ink-900">Employer profile not found</h2>
-        <p className="mt-2 text-sm text-ink-500">Please make sure your employer profile exists before posting a job.</p>
-        <div className="mt-5 flex justify-center">
-          <Button onClick={() => navigate('/employer/profile')}>Go to Profile</Button>
-        </div>
+        <h2 className="text-lg font-bold text-ink-900">Loading employer account...</h2>
+        <p className="mt-2 text-sm text-ink-500">Retrieving your business information.</p>
       </Card>
     );
   }
@@ -363,13 +362,13 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><CategoryIcon category={previewJob.category} className="h-5 w-5" /></div>
               <div className="min-w-0">
                 <p className="font-bold text-ink-900 truncate">{previewJob.title || 'Untitled job'}</p>
-                <p className="text-xs text-ink-500">{profile.businessName}</p>
+                <p className="text-xs text-ink-500">{profile?.businessName ?? 'Local Business'}</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Badge variant="teal" size="sm">{CATEGORY_LABELS[previewJob.category]}</Badge>
               <Badge variant="neutral" size="sm">{EMPLOYMENT_TYPE_LABELS[previewJob.employmentType]}</Badge>
-              <VerificationBadge state={profile.verification} size="sm" />
+              <VerificationBadge state={profile?.verification ?? 'unverified'} size="sm" />
             </div>
             <dl className="mt-3 space-y-1.5 text-xs text-ink-600">
               <div className="flex justify-between gap-2"><dt className="shrink-0">Location</dt><dd className="font-semibold text-ink-800 text-right">{previewJob.area}, Ahmedabad</dd></div>
@@ -390,7 +389,7 @@ export function EmployerJobFormPage({ editJobId }: { editJobId?: string }) {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><CategoryIcon category={previewJob.category} className="h-6 w-6" /></div>
             <div>
               <h3 className="text-lg font-bold text-ink-900">{previewJob.title || 'Untitled job'}</h3>
-              <p className="text-sm text-ink-500">{profile.businessName} · {previewJob.area}</p>
+              <p className="text-sm text-ink-500">{profile?.businessName ?? 'Local Business'} · {previewJob.area}</p>
             </div>
           </div>
           <p className="text-sm text-ink-700">{previewJob.description || 'No description yet.'}</p>

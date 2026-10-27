@@ -133,7 +133,7 @@ async function loadDatabase(): Promise<void> {
 
     const users = (usersR.data ?? []) as unknown as User[];
     const employerProfiles = (empR.data ?? []) as unknown as EmployerProfile[];
-    const workerProfiles = (wpR.data ?? []) as unknown as WorkerProfile[];
+    let workerProfiles = (wpR.data ?? []) as unknown as WorkerProfile[];
     let jobs = (jobsR.data ?? []) as unknown as Job[];
     const applications = (appsR.data ?? []) as unknown as Application[];
     const savedJobs = (savedR.data ?? []) as unknown as SavedJob[];
@@ -141,11 +141,29 @@ async function loadDatabase(): Promise<void> {
     const reviews = (reviewsR.data ?? []) as unknown as Review[];
     const reports = (reportsR.data ?? []) as unknown as Report[];
 
-    // Recompute applicantsCount from loaded applications for accuracy
+    // Recompute applicantsCount from loaded applications for accuracy and ensure arrays are never null
     jobs = jobs.map((j) => ({
       ...j,
+      responsibilities: Array.isArray(j.responsibilities) ? j.responsibilities : [],
+      requiredSkills: Array.isArray(j.requiredSkills) ? j.requiredSkills : [],
+      requirements: Array.isArray(j.requirements) ? j.requirements : [],
+      benefits: Array.isArray(j.benefits) ? j.benefits : [],
       applicantsCount: applications.filter((a) => a.jobId === j.id && a.status !== 'withdrawn').length,
     }));
+
+    workerProfiles = workerProfiles.map((w) => {
+      let history = w.workHistory;
+      if (typeof history === 'string') {
+        try { history = JSON.parse(history); } catch { history = []; }
+      }
+      return {
+        ...w,
+        skills: Array.isArray(w.skills) ? w.skills : [],
+        areas: Array.isArray(w.areas) ? w.areas : [],
+        availability: Array.isArray(w.availability) ? w.availability : [],
+        workHistory: Array.isArray(history) ? history : [],
+      };
+    });
 
     // Normalize timestamps to ISO strings
     const norm = (arr: Record<string, unknown>[]) =>
@@ -197,11 +215,11 @@ async function loadDatabase(): Promise<void> {
       })) as unknown as User[],
       workerProfiles: norm(workerProfiles as unknown as Record<string, unknown>[]).map((row) => ({
         ...row,
-        phone: row.id === ownWorkerProfileId ? String(ownAccount?.worker_phone ?? '') : '',
+        phone: (row.id === ownWorkerProfileId || (ownUserId && (row as unknown as WorkerProfile).userId === ownUserId)) ? String(ownAccount?.worker_phone ?? (row.phone ?? '')) : '',
       })) as unknown as WorkerProfile[],
       employerProfiles: norm(employerProfiles as unknown as Record<string, unknown>[]).map((row) => ({
         ...row,
-        phone: row.id === ownEmployerProfileId ? String(ownAccount?.employer_phone ?? '') : '',
+        phone: (row.id === ownEmployerProfileId || (ownUserId && (row as unknown as EmployerProfile).userId === ownUserId)) ? String(ownAccount?.employer_phone ?? (row.phone ?? '')) : '',
       })) as unknown as EmployerProfile[],
       jobs: norm(jobs as unknown as Record<string, unknown>[]) as unknown as Job[],
       applications: norm(applications as unknown as Record<string, unknown>[]) as unknown as Application[],
@@ -684,11 +702,42 @@ export async function createJob(
   },
 ): Promise<string> {
   const id = newId('job');
-  const { employerId } = job;
-  // Look up employer verification from cache
-  const employer = dbCache.employerProfiles.find((e) => e.id === employerId);
+  let employerId = job.employerId;
+  let employer = dbCache.employerProfiles.find((e) => e.id === employerId);
+  if (!employer && job.employerUserId) {
+    employer = dbCache.employerProfiles.find((e) => e.userId === job.employerUserId);
+    if (employer) employerId = employer.id;
+  }
+  if (!employerId && job.employerUserId) {
+    const { data: epRow } = await supabase.from('employer_profiles').select('id, verification').eq('userId', job.employerUserId).maybeSingle();
+    if (epRow?.id) {
+      employerId = epRow.id;
+    } else {
+      const newEmpId = newId('ep');
+      const user = dbCache.users.find((u) => u.id === job.employerUserId);
+      await supabase.from('employer_profiles').insert({
+        id: newEmpId,
+        userId: job.employerUserId,
+        businessName: user?.name ? `${user.name}'s Business` : 'Local Business',
+        category: job.category ?? 'retail',
+        address: job.location || 'Ahmedabad',
+        area: job.area || 'Satellite',
+        city: 'Ahmedabad',
+        phone: user?.phone || '',
+        description: '',
+        verification: 'unverified',
+        rating: 0,
+        ratingCount: 0,
+        jobsPosted: 1,
+        establishedYear: new Date().getFullYear(),
+      });
+      employerId = newEmpId;
+    }
+  }
+
   const row: Record<string, unknown> = {
     ...job,
+    employerId,
     id,
     createdAt: new Date().toISOString(),
     applicantsCount: 0,

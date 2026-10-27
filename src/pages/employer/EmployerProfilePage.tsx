@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea, FieldWrap } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar, VerificationBadge, StarRating } from '@/components/shared';
-import { CATEGORY_LABELS, type JobCategory } from '@/types';
+import { CATEGORY_LABELS, type JobCategory, type EmployerProfile } from '@/types';
 import { toastSuccess, toastError } from '@/components/ui/Toast';
 
 const CATEGORIES: JobCategory[] = ['retail', 'event_support', 'packing', 'delivery', 'restaurant', 'warehouse', 'office_support'];
@@ -70,7 +70,24 @@ export function EmployerProfilePage() {
     }
   };
 
-  if (!user || !profile) {
+  const effectiveProfile: EmployerProfile = profile ?? {
+    id: `ep_${userId}`,
+    userId,
+    businessName: user?.name ? `${user.name}'s Business` : businessName || 'Local Business',
+    category: category || 'retail',
+    address: address || 'Ahmedabad',
+    area: area || 'Satellite',
+    city: 'Ahmedabad',
+    phone: user?.phone ?? phone ?? '',
+    description: description || '',
+    verification: 'unverified',
+    rating: 0,
+    ratingCount: 0,
+    jobsPosted: 0,
+    establishedYear: Number(establishedYear) || new Date().getFullYear(),
+  };
+
+  if (!userId) {
     return (
       <Card className="p-8 text-center max-w-lg mx-auto mt-6">
         <h2 className="text-lg font-bold text-ink-900">Loading business profile...</h2>
@@ -88,15 +105,15 @@ export function EmployerProfilePage() {
 
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <Avatar name={user.name} color={user.avatarColor} size="lg" />
+          <Avatar name={user?.name ?? effectiveProfile.businessName} color={user?.avatarColor ?? '#10b981'} size="lg" />
           <div className="flex-1">
-            <h1 className="text-xl font-extrabold font-display text-ink-900">{profile.businessName}</h1>
-            <p className="text-sm text-ink-500 flex items-center gap-1.5"><MapPin className="h-4 w-4" />{profile.area}, {profile.city}</p>
+            <h1 className="text-xl font-extrabold font-display text-ink-900">{effectiveProfile.businessName}</h1>
+            <p className="text-sm text-ink-500 flex items-center gap-1.5"><MapPin className="h-4 w-4" />{effectiveProfile.area}, {effectiveProfile.city}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <VerificationBadge state={profile.verification} size="sm" />
-              {profile.ratingCount > 0 && <StarRating value={profile.rating} count={profile.ratingCount} />}
-              <Badge variant="neutral" size="sm">{profile.jobsPosted} jobs posted</Badge>
-              <Badge variant="neutral" size="sm">Since {profile.establishedYear}</Badge>
+              <VerificationBadge state={effectiveProfile.verification} size="sm" />
+              {effectiveProfile.ratingCount > 0 && <StarRating value={effectiveProfile.rating} count={effectiveProfile.ratingCount} />}
+              <Badge variant="neutral" size="sm">{effectiveProfile.jobsPosted} jobs posted</Badge>
+              <Badge variant="neutral" size="sm">Since {effectiveProfile.establishedYear}</Badge>
             </div>
           </div>
         </div>
@@ -139,21 +156,21 @@ export function EmployerProfilePage() {
           <Card className="p-5 lg:col-span-2 space-y-5">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Contact</h2>
-              <p className="mt-1.5 flex items-center gap-2 text-sm text-ink-700"><Phone className="h-4 w-4 text-ink-400" />{profile.phone}</p>
-              <p className="mt-1 flex items-center gap-2 text-sm text-ink-700"><Building2 className="h-4 w-4 text-ink-400" />{profile.address}, {profile.area}, {profile.city}</p>
+              <p className="mt-1.5 flex items-center gap-2 text-sm text-ink-700"><Phone className="h-4 w-4 text-ink-400" />{effectiveProfile.phone || 'No phone set'}</p>
+              <p className="mt-1 flex items-center gap-2 text-sm text-ink-700"><Building2 className="h-4 w-4 text-ink-400" />{effectiveProfile.address}, {effectiveProfile.area}, {effectiveProfile.city}</p>
             </div>
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">Category</h2>
-              <p className="mt-1.5"><Badge variant="teal">{CATEGORY_LABELS[profile.category]}</Badge></p>
+              <p className="mt-1.5"><Badge variant="teal">{CATEGORY_LABELS[effectiveProfile.category]}</Badge></p>
             </div>
-            {profile.description && (
+            {effectiveProfile.description && (
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-ink-400">About</h2>
-                <p className="mt-1.5 text-sm text-ink-700">{profile.description}</p>
+                <p className="mt-1.5 text-sm text-ink-700">{effectiveProfile.description}</p>
               </div>
             )}
             <div className="rounded-xl bg-canvas-100 p-3 text-xs text-ink-500">
-              <p className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />Verification state: <VerificationBadge state={profile.verification} size="sm" /></p>
+              <p className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />Verification state: <VerificationBadge state={effectiveProfile.verification} size="sm" /></p>
               <p className="mt-1.5">Demo profiles show as Demo Verified or Not Verified. LocalConnect does not perform real identity verification in this prototype.</p>
             </div>
           </Card>
