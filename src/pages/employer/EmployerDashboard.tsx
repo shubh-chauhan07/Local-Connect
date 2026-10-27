@@ -62,11 +62,11 @@ export function EmployerDashboard() {
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-br from-ink-900 to-ink-800 p-5 sm:p-6 text-white">
           <div className="flex items-center gap-4">
-            <Avatar name={user?.name ?? effectiveProfile.businessName} color={user?.avatarColor ?? '#10b981'} size="lg" className="shrink-0" />
-            <div className="min-w-0">
-              <p className="text-ink-300 text-sm">Employer dashboard</p>
-              <h1 className="text-xl sm:text-2xl font-extrabold font-display truncate">{effectiveProfile.businessName}</h1>
-              <div className="mt-1 flex items-center gap-2">
+            <Avatar name={user?.name ?? effectiveProfile.businessName} color={user?.avatarColor ?? '#10b981'} size="lg" className="shrink-0 ring-2 ring-white/20" />
+            <div className="min-w-0 flex-1">
+              <p className="text-ink-200 text-sm font-medium">Employer dashboard</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold font-display truncate text-white">{effectiveProfile.businessName}</h1>
+              <div className="mt-1.5 flex items-center gap-2">
                 <VerificationBadge state={effectiveProfile.verification} size="sm" />
                 {effectiveProfile.ratingCount > 0 && <StarRating value={effectiveProfile.rating} count={effectiveProfile.ratingCount} />}
               </div>
@@ -171,8 +171,8 @@ export function EmployerDashboard() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl bg-white/10 p-3">
-      <p className="text-2xl font-extrabold">{value}</p>
-      <p className="text-xs text-ink-300">{label}</p>
+      <p className="text-2xl font-extrabold text-white">{value}</p>
+      <p className="text-xs text-ink-200">{label}</p>
     </div>
   );
 }

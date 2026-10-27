@@ -90,11 +90,11 @@ export function WorkerDashboard() {
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-br from-brand-600 to-teal-600 p-6 text-white">
           <div className="flex items-center gap-4">
-            <Avatar name={user?.name ?? effectiveProfile.fullName} color={user?.avatarColor ?? '#10b981'} size="lg" />
-            <div>
-              <p className="text-brand-50/90 text-sm">Welcome back,</p>
-              <h1 className="text-2xl font-extrabold font-display">{user?.name ?? effectiveProfile.fullName}</h1>
-              <p className="mt-0.5 text-sm text-brand-50/80">{effectiveProfile.preferredArea} · {effectiveProfile.completedJobs} jobs completed</p>
+            <Avatar name={user?.name ?? effectiveProfile.fullName} color={user?.avatarColor ?? '#10b981'} size="lg" className="shrink-0 ring-2 ring-white/20" />
+            <div className="min-w-0 flex-1">
+              <p className="text-brand-100 text-sm">Welcome back,</p>
+              <h1 className="text-2xl font-extrabold font-display text-white truncate">{user?.name ?? effectiveProfile.fullName}</h1>
+              <p className="mt-0.5 text-sm text-brand-100">{effectiveProfile.preferredArea} · {effectiveProfile.completedJobs} jobs completed</p>
             </div>
           </div>
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -223,8 +223,8 @@ export function WorkerDashboard() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl bg-white/15 backdrop-blur p-3">
-      <p className="text-2xl font-extrabold">{value}</p>
-      <p className="text-xs text-brand-50/80">{label}</p>
+      <p className="text-2xl font-extrabold text-white">{value}</p>
+      <p className="text-xs text-brand-100">{label}</p>
     </div>
   );
 }
