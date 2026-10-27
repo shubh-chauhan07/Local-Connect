@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Frown, Star, Phone, MapPin, Briefcase, Flag } from 'lucide-react';
 import {
   useDB, useSession, getApplicationsForEmployer, getAuthorizedProfilePhone, setApplicationStatus,
+  getReviewsForTarget,
 } from '@/data/store';
 import { useRouter } from '@/lib/router';
 import { Card, EmptyState, SectionTitle } from '@/components/ui/Card';
@@ -46,6 +47,17 @@ export function EmployerApplicantsPage() {
   const detailStatus = detail?.status;
   const detailWorkerId = detailWorker?.id;
   const [acceptedPhone, setAcceptedPhone] = useState('');
+
+  const detailReviews = useMemo(() => {
+    if (!detail) return [];
+    const byProfile = detailProfile ? getReviewsForTarget(db, 'worker', detailProfile.id) : [];
+    const byUser = detailWorker ? getReviewsForTarget(db, 'worker', detailWorker.id) : [];
+    const combined = [...byProfile];
+    for (const r of byUser) {
+      if (!combined.some((x) => x.id === r.id)) combined.push(r);
+    }
+    return combined;
+  }, [db, detail, detailProfile, detailWorker]);
 
   useEffect(() => {
     setAcceptedPhone('');
@@ -156,8 +168,13 @@ export function EmployerApplicantsPage() {
                     <VerificationBadge state={worker.verification} size="sm" />
                   </div>
                   <p className="text-xs text-ink-500 truncate">for {job.title} · applied {formatRelative(app.appliedAt)}</p>
-                  <div className="mt-1 flex items-center gap-2 sm:hidden">
-                    <ApplicationStatusBadge status={app.status} />
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <div className="sm:hidden">
+                      <ApplicationStatusBadge status={app.status} />
+                    </div>
+                    {profile && profile.rating > 0 && (
+                      <StarRating value={profile.rating} count={profile.ratingCount} size="sm" />
+                    )}
                   </div>
                   {profile && profile.skills.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -190,33 +207,56 @@ export function EmployerApplicantsPage() {
           )
         }
       >
-        {detail && detailJob && detailWorker && detailProfile && (
+        {detail && detailJob && (
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <Avatar name={detailWorker.name} color={detailWorker.avatarColor} size="lg" />
-              <div className="flex-1">
+              <Avatar
+                name={detailWorker?.name ?? 'Applicant'}
+                color={detailWorker?.avatarColor ?? '#10b981'}
+                size="lg"
+              />
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-ink-900">{detailWorker.name}</h3>
-                  <VerificationBadge state={detailWorker.verification} size="sm" />
+                  <h3 className="font-bold text-ink-900 truncate">{detailWorker?.name ?? 'Applicant'}</h3>
+                  <VerificationBadge state={detailWorker?.verification ?? 'unverified'} size="sm" />
                 </div>
                 <p className="text-sm text-ink-500">Applied to {detailJob.title} · {formatRelative(detail.appliedAt)}</p>
-                <div className="mt-2"><ApplicationStatusBadge status={detail.status} /></div>
+                <div className="mt-2 flex items-center gap-2">
+                  <ApplicationStatusBadge status={detail.status} />
+                  {detailProfile && detailProfile.rating > 0 && (
+                    <StarRating value={detailProfile.rating} count={detailProfile.ratingCount} size="sm" />
+                  )}
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => report.openFor('user', detailWorker.id, detailWorker.name)} leftIcon={<Flag className="h-4 w-4 text-ink-400" />}>Report</Button>
+              {detailWorker && (
+                <Button variant="ghost" size="sm" onClick={() => report.openFor('user', detailWorker.id, detailWorker.name)} leftIcon={<Flag className="h-4 w-4 text-ink-400" />}>
+                  Report
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1"><MapPin className="h-3 w-3" />Preferred area</p>
-                <p className="mt-0.5 font-semibold text-ink-800">{detailProfile.preferredArea}</p>
+                <p className="mt-0.5 font-semibold text-ink-800">{detailProfile?.preferredArea ?? detailJob.area}</p>
               </div>
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1"><Briefcase className="h-3 w-3" />Experience</p>
-                <p className="mt-0.5 font-semibold text-ink-800">{detailProfile.experienceYears} year{detailProfile.experienceYears !== 1 ? 's' : ''} · {detailProfile.completedJobs} jobs done</p>
+                <p className="mt-0.5 font-semibold text-ink-800">
+                  {detailProfile
+                    ? `${detailProfile.experienceYears} year${detailProfile.experienceYears !== 1 ? 's' : ''} · ${detailProfile.completedJobs} jobs done`
+                    : 'Experience details not specified'}
+                </p>
               </div>
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1"><Star className="h-3 w-3" />Rating</p>
-                <p className="mt-0.5"><StarRating value={detailProfile.rating} count={detailProfile.ratingCount} /></p>
+                <p className="mt-0.5">
+                  {detailProfile && (detailProfile.rating > 0 || detailProfile.ratingCount > 0) ? (
+                    <StarRating value={detailProfile.rating} count={detailProfile.ratingCount} />
+                  ) : (
+                    <span className="text-xs text-ink-400">No ratings yet</span>
+                  )}
+                </p>
               </div>
               <div className="rounded-xl border border-canvas-200 p-3">
                 <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1"><Phone className="h-3 w-3" />Phone</p>
@@ -232,14 +272,22 @@ export function EmployerApplicantsPage() {
             <div>
               <p className="text-xs font-semibold uppercase text-ink-400">Skills</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {detailProfile.skills.length ? detailProfile.skills.map((s) => <Badge key={s} variant="brand" size="sm">{s}</Badge>) : <span className="text-sm text-ink-400">No skills listed.</span>}
+                {detailProfile?.skills?.length ? (
+                  detailProfile.skills.map((s) => <Badge key={s} variant="brand" size="sm">{s}</Badge>)
+                ) : (
+                  <span className="text-sm text-ink-400">No skills listed.</span>
+                )}
               </div>
             </div>
 
             <div>
               <p className="text-xs font-semibold uppercase text-ink-400">Availability</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {detailProfile.availability.length ? detailProfile.availability.map((a) => <Badge key={a} variant="teal" size="sm">{a}</Badge>) : <span className="text-sm text-ink-400">Not specified.</span>}
+                {detailProfile?.availability?.length ? (
+                  detailProfile.availability.map((a) => <Badge key={a} variant="teal" size="sm">{a}</Badge>)
+                ) : (
+                  <span className="text-sm text-ink-400">Not specified.</span>
+                )}
               </div>
             </div>
 
@@ -250,8 +298,48 @@ export function EmployerApplicantsPage() {
               </div>
             )}
 
+            {/* Reviews from previous employers */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase text-ink-400 flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 text-warning-500" />
+                  Employer Reviews ({detailReviews.length})
+                </p>
+                {detailProfile && detailProfile.rating > 0 && (
+                  <StarRating value={detailProfile.rating} count={detailProfile.ratingCount} size="sm" />
+                )}
+              </div>
+              {detailReviews.length > 0 ? (
+                <div className="space-y-2">
+                  {detailReviews.map((r) => {
+                    const reviewer = db.users.find((u) => u.id === r.reviewerUserId);
+                    const reviewerEmp = db.employerProfiles.find((e) => e.userId === r.reviewerUserId);
+                    return (
+                      <div key={r.id} className="rounded-xl border border-canvas-200 bg-canvas-50/70 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            {reviewer && <Avatar name={reviewer.name} color={reviewer.avatarColor} size="sm" />}
+                            <span className="text-xs font-semibold text-ink-800">
+                              {reviewerEmp?.businessName ?? reviewer?.name ?? 'Employer'}
+                            </span>
+                          </div>
+                          <StarRating value={r.rating} size="sm" />
+                        </div>
+                        {r.comment && <p className="mt-1.5 text-xs text-ink-700 leading-relaxed">{r.comment}</p>}
+                        <p className="mt-1 text-[10px] text-ink-400">{formatRelative(r.createdAt)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-canvas-200 p-3 text-center">
+                  <p className="text-xs text-ink-400">No written reviews yet for this applicant.</p>
+                </div>
+              )}
+            </div>
+
             {/* Work history */}
-            {detailProfile.workHistory.length > 0 && (
+            {Array.isArray(detailProfile?.workHistory) && detailProfile.workHistory.length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase text-ink-400">Work history</p>
                 <div className="mt-2 space-y-2">
