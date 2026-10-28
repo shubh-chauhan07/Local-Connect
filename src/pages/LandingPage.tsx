@@ -328,9 +328,9 @@ export function LandingPage() {
               </Button>
             </div>
             <div className="bg-brand-600 p-8 sm:p-10 text-white">
-              <h3 className="text-2xl font-extrabold font-display">I need to hire workers</h3>
+              <h3 className="text-2xl font-extrabold font-display text-white">I need to hire workers</h3>
               <p className="mt-2 text-brand-50/90">Post a short-term job, set the pay and shift, and review applicants from your area. Manage everything from one dashboard.</p>
-              <Button variant="secondary" className="mt-5 bg-white text-brand-700 hover:bg-brand-50" onClick={enterEmployer} rightIcon={<ArrowRight className="h-4 w-4" />}>
+              <Button variant="white" className="mt-5" onClick={enterEmployer} rightIcon={<ArrowRight className="h-4 w-4 text-brand-700" />}>
                 Enter as employer
               </Button>
             </div>
