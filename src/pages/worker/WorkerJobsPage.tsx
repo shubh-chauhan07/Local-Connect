@@ -262,10 +262,10 @@ export function WorkerJobsPage({ publicMode = false }: { publicMode?: boolean })
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
         <button
           onClick={() => setCategory('')}
-          className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+          className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
             category === ''
               ? 'bg-ink-900 text-white shadow-sm'
-              : 'bg-white border border-canvas-200 text-ink-700 hover:border-brand-300 hover:bg-brand-50/50'
+              : 'bg-white border border-canvas-200 text-ink-700 hover:border-brand-300 hover:bg-canvas-100'
           }`}
         >
           All Categories
@@ -274,10 +274,10 @@ export function WorkerJobsPage({ publicMode = false }: { publicMode?: boolean })
           <button
             key={cat}
             onClick={() => setCategory((prev) => (prev === cat ? '' : cat))}
-            className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
               category === cat
                 ? 'bg-brand-600 text-white shadow-sm ring-1 ring-brand-700'
-                : 'bg-white border border-canvas-200 text-ink-700 hover:border-brand-300 hover:bg-brand-50/50'
+                : 'bg-white border border-canvas-200 text-ink-700 hover:border-brand-300 hover:bg-canvas-100'
             }`}
           >
             {CATEGORY_LABELS[cat]}

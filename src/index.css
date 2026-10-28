@@ -29,23 +29,6 @@
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-  /* Glassmorphism utilities */
-  .glass-card {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-  }
-  .glass-dark {
-    background: rgba(15, 31, 51, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-teal-600;
-  }
 }
 
 /* Focus ring */

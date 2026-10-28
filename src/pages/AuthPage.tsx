@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft, Briefcase, Building2, ShieldCheck, User as UserIcon, MailCheck, KeyRound, Loader2,
+  Eye, EyeOff,
 } from 'lucide-react';
 import { useRouter, linkProps } from '@/lib/router';
 import {
@@ -26,6 +27,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const [role, setRole] = useState<Role>(queryParams.get('role') === 'employer' ? 'employer' : 'worker');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [area, setArea] = useState('Satellite');
@@ -243,8 +245,8 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             </Card>
           )}
 
-          {/* Role selector */}
-          <Card className="p-6 sm:p-8 rounded-3xl shadow-pop border border-canvas-200/80 bg-white">
+          {/* Role selector & Form Card */}
+          <Card className="p-6 sm:p-8 bg-white border border-canvas-200 shadow-card rounded-2xl">
             <div className="mb-5 flex items-center gap-1 rounded-xl bg-canvas-100 p-1">
               {(['worker', 'employer'] as Role[]).map((r) => (
                 <button
@@ -294,7 +296,24 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 </FieldWrap>
               )}
               <FieldWrap label="Password" required error={errors.password}>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" invalid={!!errors.password} />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    invalid={!!errors.password}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-700 transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </FieldWrap>
 
               {!isSignup && (
@@ -311,7 +330,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 </div>
               )}
 
-              <Button type="submit" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} className="shadow-sm hover:shadow-glow font-bold">
+              <Button type="submit" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}>
                 {isSignup ? 'Create account' : 'Log in'}
               </Button>
             </form>

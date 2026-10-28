@@ -222,9 +222,9 @@ export function WorkerDashboard() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl bg-white/15 backdrop-blur-md border border-white/20 p-3 hover:bg-white/20 transition-all">
+    <div className="rounded-xl bg-white/15 backdrop-blur p-3">
       <p className="text-2xl font-extrabold text-white">{value}</p>
-      <p className="text-xs font-medium text-brand-100">{label}</p>
+      <p className="text-xs text-brand-100">{label}</p>
     </div>
   );
 }
@@ -233,12 +233,10 @@ function QuickAction({ icon, label, to, navigate }: { icon: React.ReactNode; lab
   return (
     <button
       onClick={() => navigate(to)}
-      className="group flex items-center gap-3.5 rounded-2xl bg-white border border-canvas-200 p-4 hover:border-brand-300 hover:shadow-cardHover hover:-translate-y-0.5 transition-all duration-200 text-left"
+      className="flex items-center gap-3 rounded-2xl bg-white border border-canvas-200 p-4 hover:border-brand-200 hover:shadow-card transition-all text-left"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-100 group-hover:bg-brand-600 group-hover:text-white transition-all">
-        {icon}
-      </span>
-      <span className="text-sm font-bold text-ink-800 group-hover:text-brand-700 transition-colors">{label}</span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">{icon}</span>
+      <span className="text-sm font-semibold text-ink-800">{label}</span>
     </button>
   );
 }

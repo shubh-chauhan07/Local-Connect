@@ -170,9 +170,9 @@ export function EmployerDashboard() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl bg-white/10 backdrop-blur-md border border-white/15 p-3 hover:bg-white/15 transition-all">
+    <div className="rounded-xl bg-white/10 p-3">
       <p className="text-2xl font-extrabold text-white">{value}</p>
-      <p className="text-xs font-medium text-ink-200">{label}</p>
+      <p className="text-xs text-ink-200">{label}</p>
     </div>
   );
 }
@@ -181,20 +181,10 @@ function QuickAction({ icon, label, to, navigate, primary }: { icon: React.React
   return (
     <button
       onClick={() => navigate(to)}
-      className={`group flex items-center gap-3.5 rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 text-left ${
-        primary
-          ? 'bg-gradient-to-r from-brand-600 to-teal-600 text-white shadow-sm hover:shadow-glow'
-          : 'bg-white border border-canvas-200 text-ink-800 hover:border-brand-300 hover:shadow-cardHover'
-      }`}
+      className={`flex items-center gap-3 rounded-2xl p-4 transition-all text-left ${primary ? 'bg-brand-600 text-white hover:bg-brand-700' : 'bg-white border border-canvas-200 text-ink-800 hover:border-brand-200 hover:shadow-card'}`}
     >
-      <span
-        className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all ${
-          primary ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700 ring-1 ring-brand-100 group-hover:bg-brand-600 group-hover:text-white'
-        }`}
-      >
-        {icon}
-      </span>
-      <span className="text-sm font-bold">{label}</span>
+      <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${primary ? 'bg-white/20' : 'bg-brand-50 text-brand-600'}`}>{icon}</span>
+      <span className="text-sm font-semibold">{label}</span>
     </button>
   );
 }
