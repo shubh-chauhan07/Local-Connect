@@ -73,19 +73,38 @@ function NavigateTo({ to }: { to: string }) {
 function PublicPageFrame({ children }: { children: ReactNode }) {
   const { navigate } = useRouter();
   return (
-    <div className="min-h-screen bg-canvas-50">
-      <header className="border-b border-canvas-200 bg-white">
+    <div className="min-h-screen bg-canvas-50 flex flex-col">
+      <header className="sticky top-0 z-40 border-b border-canvas-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <a {...linkProps('/', navigate)} aria-label="LocalConnect home">
-            <Logo />
-          </a>
-          <nav className="flex items-center gap-4 text-sm font-semibold text-ink-600">
+          <div className="flex items-center gap-3">
+            <a {...linkProps('/', navigate)} aria-label="LocalConnect home">
+              <Logo />
+            </a>
+            <span className="hidden sm:inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700 ring-1 ring-inset ring-brand-200">
+              Ahmedabad
+            </span>
+          </div>
+          <nav className="flex items-center gap-3 sm:gap-6 text-sm font-semibold text-ink-600">
+            <a {...linkProps('/jobs', navigate)} className="text-brand-700 hover:text-brand-800">Browse Jobs</a>
             <a {...linkProps('/login', navigate)} className="hover:text-ink-900">Log in</a>
-            <a {...linkProps('/signup', navigate)} className="hover:text-ink-900">Sign up</a>
+            <Button size="sm" onClick={() => navigate('/signup')}>
+              Sign up
+            </Button>
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 flex-1">{children}</main>
+      <footer className="border-t border-canvas-200 bg-white py-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ink-400">
+          <div className="flex items-center gap-2">
+            <Logo />
+            <span>· Ahmedabad, Gujarat</span>
+          </div>
+          <p className="text-center sm:text-right max-w-md">
+            LocalConnect is a college design-thinking prototype demonstration. All jobs and profile records are sample data.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -89,6 +89,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <a {...linkProps('/', navigate)} className="flex items-center">
               <Logo />
             </a>
+            <Badge variant={role === 'employer' ? 'neutral' : 'brand'} size="sm" className="hidden md:inline-flex capitalize">
+              {role === 'admin' ? 'Admin' : role === 'employer' ? 'Employer' : 'Worker'}
+            </Badge>
             <Badge variant="neutral" size="sm" className="hidden sm:inline-flex">
               <MapPin className="h-3 w-3" /> Ahmedabad
             </Badge>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, Loader2, ShieldCheck } from 'lucide-react';
+import { KeyRound, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useRouter, linkProps } from '@/lib/router';
 import { updatePassword, signOut } from '@/data/store';
 import { Logo } from '@/components/shared';
@@ -12,6 +12,7 @@ export function ResetPasswordPage() {
   const { navigate } = useRouter();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -66,10 +67,33 @@ export function ResetPasswordPage() {
             {!done && (
               <form onSubmit={submit} className="space-y-4">
                 <FieldWrap label="New password" required error={password.length > 0 && password.length < 6 ? 'At least 6 characters' : null}>
-                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" invalid={!!password && password.length < 6} />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      invalid={!!password && password.length < 6}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => !p)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-700 transition-colors"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </FieldWrap>
                 <FieldWrap label="Confirm password" required error={!!confirm && confirm !== password ? 'Passwords do not match' : null}>
-                  <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter password" invalid={!!confirm && confirm !== password} />
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="Re-enter password"
+                    invalid={!!confirm && confirm !== password}
+                  />
                 </FieldWrap>
                 {error && <p className="text-sm text-error-600">{error}</p>}
                 <Button type="submit" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}>

@@ -106,6 +106,38 @@ export function WorkerDashboard() {
         </div>
       </Card>
 
+      {/* Profile completion guide */}
+      {effectiveProfile.profileCompletion < 100 && (
+        <Card className="p-4 bg-gradient-to-r from-brand-50/60 to-white border-brand-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-xs font-bold text-brand-900">
+                  Profile Completion: {effectiveProfile.profileCompletion}%
+                </span>
+                <span className="text-[11px] font-semibold text-brand-700">
+                  Add more skills & preferred areas to get more job matches
+                </span>
+              </div>
+              <div className="w-full bg-canvas-200/80 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-brand-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${effectiveProfile.profileCompletion}%` }}
+                />
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/worker/profile')}
+              className="shrink-0 self-start sm:self-auto text-xs"
+            >
+              Complete profile
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Quick actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <QuickAction icon={<Briefcase className="h-5 w-5" />} label="Find work" to="/worker/jobs" navigate={navigate} />
