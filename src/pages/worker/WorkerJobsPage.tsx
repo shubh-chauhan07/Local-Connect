@@ -258,6 +258,33 @@ export function WorkerJobsPage({ publicMode = false }: { publicMode?: boolean })
         )}
       </Card>
 
+      {/* Quick Category Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <button
+          onClick={() => setCategory('')}
+          className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+            category === ''
+              ? 'bg-ink-900 text-white shadow-sm'
+              : 'bg-white border border-canvas-200 text-ink-700 hover:border-brand-300 hover:bg-brand-50/50'
+          }`}
+        >
+          All Categories
+        </button>
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategory((prev) => (prev === cat ? '' : cat))}
+            className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              category === cat
+                ? 'bg-brand-600 text-white shadow-sm ring-1 ring-brand-700'
+                : 'bg-white border border-canvas-200 text-ink-700 hover:border-brand-300 hover:bg-brand-50/50'
+            }`}
+          >
+            {CATEGORY_LABELS[cat]}
+          </button>
+        ))}
+      </div>
+
       {/* Sort + active chips */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">

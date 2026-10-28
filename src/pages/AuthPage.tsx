@@ -244,76 +244,78 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
           )}
 
           {/* Role selector */}
-          <div className="mb-4 flex items-center gap-1 rounded-xl bg-canvas-100 p-1">
-            {(['worker', 'employer'] as Role[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRole(r)}
-                aria-pressed={role === r}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-all cursor-pointer',
-                  role === r
-                    ? 'bg-white text-brand-700 shadow-sm font-bold'
-                    : 'text-ink-500 hover:text-ink-800 hover:bg-canvas-200/50',
-                )}
-              >
-                {r === 'worker' ? <UserIcon className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                {r === 'worker' ? 'Worker' : 'Employer'}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={submit} className="space-y-4">
-            {isSignup && (
-              <FieldWrap label={role === 'worker' ? 'Full name' : 'Contact person name'} required error={errors.name}>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rahul Sharma" invalid={!!errors.name} />
-              </FieldWrap>
-            )}
-            {isSignup && role === 'employer' && (
-              <FieldWrap label="Business name" required error={errors.businessName}>
-                <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Satvik Mart" invalid={!!errors.businessName} />
-              </FieldWrap>
-            )}
-            <FieldWrap label="Email" required error={errors.email}>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.in" invalid={!!errors.email} />
-            </FieldWrap>
-            {isSignup && (
-              <FieldWrap label="Phone" required error={errors.phone}>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98250 12345" invalid={!!errors.phone} />
-              </FieldWrap>
-            )}
-            {isSignup && (
-              <FieldWrap label="Preferred area" required>
-                <Select value={area} onChange={(e) => setArea(e.target.value)}>
-                  {AREAS.map((a) => (
-                    <option key={a} value={a}>{a}, Ahmedabad</option>
-                  ))}
-                </Select>
-              </FieldWrap>
-            )}
-            <FieldWrap label="Password" required error={errors.password}>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" invalid={!!errors.password} />
-            </FieldWrap>
-
-            {!isSignup && (
-              <div className="flex justify-end">
-                <button type="button" onClick={() => setView('forgot')} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-                  Forgot password?
+          <Card className="p-6 sm:p-8 rounded-3xl shadow-pop border border-canvas-200/80 bg-white">
+            <div className="mb-5 flex items-center gap-1 rounded-xl bg-canvas-100 p-1">
+              {(['worker', 'employer'] as Role[]).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  aria-pressed={role === r}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-all cursor-pointer',
+                    role === r
+                      ? 'bg-white text-brand-700 shadow-sm font-bold'
+                      : 'text-ink-500 hover:text-ink-800 hover:bg-canvas-200/50',
+                  )}
+                >
+                  {r === 'worker' ? <UserIcon className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                  {r === 'worker' ? 'Worker' : 'Employer'}
                 </button>
-              </div>
-            )}
+              ))}
+            </div>
 
-            {errors.form && (
-              <div className="rounded-lg bg-error-50 border border-error-200 px-3 py-2 text-sm text-error-700">
-                {errors.form}
-              </div>
-            )}
+            <form onSubmit={submit} className="space-y-4">
+              {isSignup && (
+                <FieldWrap label={role === 'worker' ? 'Full name' : 'Contact person name'} required error={errors.name}>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rahul Sharma" invalid={!!errors.name} />
+                </FieldWrap>
+              )}
+              {isSignup && role === 'employer' && (
+                <FieldWrap label="Business name" required error={errors.businessName}>
+                  <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Satvik Mart" invalid={!!errors.businessName} />
+                </FieldWrap>
+              )}
+              <FieldWrap label="Email" required error={errors.email}>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.in" invalid={!!errors.email} />
+              </FieldWrap>
+              {isSignup && (
+                <FieldWrap label="Phone" required error={errors.phone}>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98250 12345" invalid={!!errors.phone} />
+                </FieldWrap>
+              )}
+              {isSignup && (
+                <FieldWrap label="Preferred area" required>
+                  <Select value={area} onChange={(e) => setArea(e.target.value)}>
+                    {AREAS.map((a) => (
+                      <option key={a} value={a}>{a}, Ahmedabad</option>
+                    ))}
+                  </Select>
+                </FieldWrap>
+              )}
+              <FieldWrap label="Password" required error={errors.password}>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" invalid={!!errors.password} />
+              </FieldWrap>
 
-            <Button type="submit" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}>
-              {isSignup ? 'Create account' : 'Log in'}
-            </Button>
-          </form>
+              {!isSignup && (
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setView('forgot')} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {errors.form && (
+                <div className="rounded-lg bg-error-50 border border-error-200 px-3 py-2 text-sm text-error-700">
+                  {errors.form}
+                </div>
+              )}
+
+              <Button type="submit" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} className="shadow-sm hover:shadow-glow font-bold">
+                {isSignup ? 'Create account' : 'Log in'}
+              </Button>
+            </form>
+          </Card>
 
           <p className="mt-5 text-center text-sm text-ink-500">
             {isSignup ? (

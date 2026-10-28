@@ -124,13 +124,13 @@ export function JobStatusBadge({ status }: { status: JobStatus }) {
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-2 font-display font-extrabold text-ink-900', className)}>
-      <span className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-        <MapPin className="h-4 w-4" />
-        <LinkIcon className="absolute h-3 w-3 text-brand-200" />
+    <span className={cn('inline-flex items-center gap-2.5 font-display font-extrabold text-ink-900 select-none group tracking-tight', className)}>
+      <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-teal-400 text-white shadow-sm ring-1 ring-brand-400/30 group-hover:shadow-glow transition-all duration-200">
+        <MapPin className="h-4.5 w-4.5" />
+        <LinkIcon className="absolute h-3 w-3 text-teal-200 -bottom-0.5 -right-0.5" />
       </span>
-      <span className="text-lg leading-none">
-        Local<span className="text-brand-600">Connect</span>
+      <span className="text-xl leading-none">
+        Local<span className="bg-gradient-to-r from-brand-600 to-teal-600 bg-clip-text text-transparent">Connect</span>
       </span>
     </span>
   );
@@ -147,7 +147,7 @@ export function Avatar({ name, color, size = 'md', className }: { name: string; 
   const dim = size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-10 w-10 text-sm';
   return (
     <span
-      className={cn('inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white', dim, className)}
+      className={cn('inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white shadow-sm ring-2 ring-white/60', dim, className)}
       style={{ backgroundColor: color }}
     >
       {initials}
